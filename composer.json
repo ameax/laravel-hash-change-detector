@@ -1,10 +1,15 @@
 {
     "name": "ameax/laravel-hash-change-detector",
-    "description": "This is my package laravel-hash-change-detector",
+    "description": "Detect changes in Laravel models through hash-based tracking and automatically publish updates to external systems",
     "keywords": [
-        "ameax Unternehmenssoftware",
         "laravel",
-        "laravel-hash-change-detector"
+        "hash",
+        "change-detection",
+        "sync",
+        "publishing",
+        "model-tracking",
+        "eloquent",
+        "webhook"
     ],
     "homepage": "https://github.com/ameax/laravel-hash-change-detector",
     "license": "MIT",
