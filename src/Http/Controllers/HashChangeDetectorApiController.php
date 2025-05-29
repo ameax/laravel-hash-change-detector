@@ -13,7 +13,48 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\DB;
+use OpenApi\Attributes as OA;
 
+#[OA\Info(
+    version: '1.0.0',
+    title: 'Laravel Hash Change Detector API',
+    description: 'API for tracking and publishing model changes based on hash comparisons. This package provides a robust system for detecting changes in Laravel models by computing hashes of their attributes and related models, then publishing those changes to various destinations.',
+    contact: new OA\Contact(
+        name: 'API Support',
+        email: 'support@example.com'
+    ),
+    license: new OA\License(
+        name: 'MIT',
+        url: 'https://opensource.org/licenses/MIT'
+    )
+)]
+#[OA\Server(
+    url: '/api/hash-change-detector',
+    description: 'Hash Change Detector API Server'
+)]
+#[OA\SecurityScheme(
+    securityScheme: 'bearerAuth',
+    type: 'http',
+    description: 'Enter your bearer token in the format **Bearer &lt;token&gt;**',
+    scheme: 'bearer',
+    bearerFormat: 'JWT'
+)]
+#[OA\Tag(
+    name: 'Hash Management',
+    description: 'Operations related to hash tracking and change detection'
+)]
+#[OA\Tag(
+    name: 'Publishing',
+    description: 'Operations related to publishing model changes'
+)]
+#[OA\Tag(
+    name: 'Publisher Management',
+    description: 'CRUD operations for managing publishers'
+)]
+#[OA\Tag(
+    name: 'Statistics',
+    description: 'API statistics and monitoring'
+)]
 class HashChangeDetectorApiController extends Controller
 {
     /**
@@ -21,6 +62,64 @@ class HashChangeDetectorApiController extends Controller
      * 
      * GET /api/hash-change-detector/models/{type}/{id}/hash
      */
+    #[OA\Get(
+        path: '/models/{type}/{id}/hash',
+        summary: 'Get the current hash status for a model',
+        security: [['bearerAuth' => []]],
+        tags: ['Hash Management'],
+        parameters: [
+            new OA\Parameter(
+                name: 'type',
+                in: 'path',
+                required: true,
+                description: 'Model type (short name or full class name)',
+                schema: new OA\Schema(type: 'string'),
+                example: 'User'
+            ),
+            new OA\Parameter(
+                name: 'id',
+                in: 'path',
+                required: true,
+                description: 'Model ID',
+                schema: new OA\Schema(type: 'integer'),
+                example: 1
+            )
+        ],
+        responses: [
+            new OA\Response(
+                response: 200,
+                description: 'Successful operation',
+                content: new OA\JsonContent(
+                    properties: [
+                        new OA\Property(property: 'model_type', type: 'string', example: 'App\\Models\\User'),
+                        new OA\Property(property: 'model_id', type: 'integer', example: 1),
+                        new OA\Property(property: 'attribute_hash', type: 'string', example: 'a1b2c3d4e5f6...'),
+                        new OA\Property(property: 'composite_hash', type: 'string', nullable: true, example: 'f6e5d4c3b2a1...'),
+                        new OA\Property(property: 'is_main_model', type: 'boolean', example: true),
+                        new OA\Property(
+                            property: 'parent_model',
+                            type: 'object',
+                            nullable: true,
+                            properties: [
+                                new OA\Property(property: 'type', type: 'string'),
+                                new OA\Property(property: 'id', type: 'integer')
+                            ]
+                        ),
+                        new OA\Property(property: 'updated_at', type: 'string', format: 'date-time', example: '2024-01-01T00:00:00.000000Z')
+                    ]
+                )
+            ),
+            new OA\Response(
+                response: 404,
+                description: 'Model type or hash not found',
+                content: new OA\JsonContent(
+                    properties: [
+                        new OA\Property(property: 'error', type: 'string', example: 'Model type not found')
+                    ]
+                )
+            )
+        ]
+    )]
     public function getModelHash(string $modelType, int $modelId): JsonResponse
     {
         $modelClass = $this->resolveModelClass($modelType);
@@ -57,6 +156,98 @@ class HashChangeDetectorApiController extends Controller
      * POST /api/hash-change-detector/models/{type}/{id}/publish
      * Body: { "publisher_ids": [1, 2, 3] } or { "publisher_names": ["log", "api"] }
      */
+    #[OA\Post(
+        path: '/models/{type}/{id}/publish',
+        summary: 'Force publish a model to specific publishers',
+        description: 'Publishes a model to specified publishers without requiring a hash change',
+        tags: ['Publishing'],
+        parameters: [
+            new OA\Parameter(
+                name: 'type',
+                in: 'path',
+                required: true,
+                description: 'Model type',
+                schema: new OA\Schema(type: 'string')
+            ),
+            new OA\Parameter(
+                name: 'id',
+                in: 'path',
+                required: true,
+                description: 'Model ID',
+                schema: new OA\Schema(type: 'integer')
+            )
+        ],
+        requestBody: new OA\RequestBody(
+            description: 'Publisher selection',
+            content: new OA\JsonContent(
+                oneOf: [
+                    new OA\Schema(
+                        properties: [
+                            new OA\Property(
+                                property: 'publisher_ids',
+                                type: 'array',
+                                items: new OA\Items(type: 'integer'),
+                                example: [1, 2, 3]
+                            )
+                        ]
+                    ),
+                    new OA\Schema(
+                        properties: [
+                            new OA\Property(
+                                property: 'publisher_names',
+                                type: 'array',
+                                items: new OA\Items(type: 'string'),
+                                example: ['log', 'api']
+                            )
+                        ]
+                    )
+                ]
+            )
+        ),
+        responses: [
+            new OA\Response(
+                response: 200,
+                description: 'Publish jobs dispatched successfully',
+                content: new OA\JsonContent(
+                    properties: [
+                        new OA\Property(property: 'message', type: 'string', example: 'Publish jobs dispatched'),
+                        new OA\Property(
+                            property: 'model',
+                            type: 'object',
+                            properties: [
+                                new OA\Property(property: 'type', type: 'string'),
+                                new OA\Property(property: 'id', type: 'integer')
+                            ]
+                        ),
+                        new OA\Property(
+                            property: 'publishers',
+                            type: 'array',
+                            items: new OA\Items(
+                                properties: [
+                                    new OA\Property(property: 'publisher_id', type: 'integer'),
+                                    new OA\Property(property: 'publisher_name', type: 'string'),
+                                    new OA\Property(property: 'publish_id', type: 'integer')
+                                ]
+                            )
+                        )
+                    ]
+                )
+            ),
+            new OA\Response(
+                response: 400,
+                description: 'Bad request',
+                content: new OA\JsonContent(
+                    properties: [
+                        new OA\Property(property: 'error', type: 'string')
+                    ]
+                )
+            ),
+            new OA\Response(
+                response: 404,
+                description: 'Model not found'
+            )
+        ]
+    )]
     public function forcePublish(Request $request, string $modelType, int $modelId): JsonResponse
     {
         $modelClass = $this->resolveModelClass($modelType);
@@ -134,6 +325,75 @@ class HashChangeDetectorApiController extends Controller
      * 
      * GET /api/hash-change-detector/models/{type}/{id}/publishes
      */
+    #[OA\Get(
+        path: '/models/{type}/{id}/publishes',
+        summary: 'Get publish history for a model',
+        tags: ['Publishing'],
+        parameters: [
+            new OA\Parameter(
+                name: 'type',
+                in: 'path',
+                required: true,
+                description: 'Model type',
+                schema: new OA\Schema(type: 'string')
+            ),
+            new OA\Parameter(
+                name: 'id',
+                in: 'path',
+                required: true,
+                description: 'Model ID',
+                schema: new OA\Schema(type: 'integer')
+            ),
+            new OA\Parameter(
+                name: 'status',
+                in: 'query',
+                required: false,
+                description: 'Filter by status',
+                schema: new OA\Schema(
+                    type: 'string',
+                    enum: ['pending', 'dispatched', 'published', 'failed', 'deferred']
+                )
+            ),
+            new OA\Parameter(
+                name: 'publisher_id',
+                in: 'query',
+                required: false,
+                description: 'Filter by publisher ID',
+                schema: new OA\Schema(type: 'integer')
+            ),
+            new OA\Parameter(
+                name: 'per_page',
+                in: 'query',
+                required: false,
+                description: 'Items per page',
+                schema: new OA\Schema(type: 'integer', default: 50)
+            )
+        ],
+        responses: [
+            new OA\Response(
+                response: 200,
+                description: 'Paginated publish history',
+                content: new OA\JsonContent(
+                    allOf: [
+                        new OA\Schema(ref: '#/components/schemas/PaginationMeta'),
+                        new OA\Schema(
+                            properties: [
+                                new OA\Property(
+                                    property: 'data',
+                                    type: 'array',
+                                    items: new OA\Items(ref: '#/components/schemas/Publish')
+                                )
+                            ]
+                        )
+                    ]
+                )
+            ),
+            new OA\Response(
+                response: 404,
+                description: 'Model or hash not found'
+            )
+        ]
+    )]
     public function getPublishHistory(Request $request, string $modelType, int $modelId): JsonResponse
     {
         $modelClass = $this->resolveModelClass($modelType);
@@ -171,6 +431,56 @@ class HashChangeDetectorApiController extends Controller
      * 
      * GET /api/hash-change-detector/publishers?model_type=App\Models\User
      */
+    #[OA\Get(
+        path: '/publishers',
+        summary: 'Get all publishers',
+        description: 'Retrieve publishers optionally filtered by model type and status',
+        tags: ['Publishing'],
+        parameters: [
+            new OA\Parameter(
+                name: 'model_type',
+                in: 'query',
+                required: false,
+                description: 'Filter by model type',
+                schema: new OA\Schema(type: 'string'),
+                example: 'App\\Models\\User'
+            ),
+            new OA\Parameter(
+                name: 'status',
+                in: 'query',
+                required: false,
+                description: 'Filter by status',
+                schema: new OA\Schema(
+                    type: 'string',
+                    enum: ['active', 'inactive']
+                )
+            )
+        ],
+        responses: [
+            new OA\Response(
+                response: 200,
+                description: 'List of publishers',
+                content: new OA\JsonContent(
+                    properties: [
+                        new OA\Property(
+                            property: 'publishers',
+                            type: 'array',
+                            items: new OA\Items(
+                                properties: [
+                                    new OA\Property(property: 'id', type: 'integer'),
+                                    new OA\Property(property: 'name', type: 'string'),
+                                    new OA\Property(property: 'model_type', type: 'string'),
+                                    new OA\Property(property: 'publisher_class', type: 'string'),
+                                    new OA\Property(property: 'status', type: 'string', enum: ['active', 'inactive']),
+                                    new OA\Property(property: 'created_at', type: 'string', format: 'date-time')
+                                ]
+                            )
+                        )
+                    ]
+                )
+            )
+        ]
+    )]
     public function getPublishers(Request $request): JsonResponse
     {
         $query = Publisher::query();
@@ -206,6 +516,41 @@ class HashChangeDetectorApiController extends Controller
      * POST /api/hash-change-detector/detect-changes
      * Body: { "model_type": "App\\Models\\User" } (optional)
      */
+    #[OA\Post(
+        path: '/detect-changes',
+        summary: 'Trigger change detection',
+        description: 'Dispatches a job to detect changes for a specific model type or all models',
+        tags: ['Hash Management'],
+        requestBody: new OA\RequestBody(
+            required: false,
+            content: new OA\JsonContent(
+                properties: [
+                    new OA\Property(
+                        property: 'model_type',
+                        type: 'string',
+                        description: 'Optional model type to check',
+                        example: 'App\\Models\\User'
+                    )
+                ]
+            )
+        ),
+        responses: [
+            new OA\Response(
+                response: 200,
+                description: 'Detection job dispatched',
+                content: new OA\JsonContent(
+                    properties: [
+                        new OA\Property(property: 'message', type: 'string', example: 'Change detection job dispatched'),
+                        new OA\Property(property: 'model_type', type: 'string', example: 'App\\Models\\User')
+                    ]
+                )
+            ),
+            new OA\Response(
+                response: 404,
+                description: 'Model type not found'
+            )
+        ]
+    )]
     public function detectChanges(Request $request): JsonResponse
     {
         $modelType = null;
@@ -231,6 +576,50 @@ class HashChangeDetectorApiController extends Controller
      * 
      * GET /api/hash-change-detector/stats
      */
+    #[OA\Get(
+        path: '/stats',
+        summary: 'Get hash tracking statistics',
+        tags: ['Statistics'],
+        parameters: [
+            new OA\Parameter(
+                name: 'model_type',
+                in: 'query',
+                required: false,
+                description: 'Get stats for specific model type',
+                schema: new OA\Schema(type: 'string')
+            )
+        ],
+        responses: [
+            new OA\Response(
+                response: 200,
+                description: 'Statistics data',
+                content: new OA\JsonContent(
+                    properties: [
+                        new OA\Property(property: 'total_hashes', type: 'integer'),
+                        new OA\Property(property: 'main_models', type: 'integer'),
+                        new OA\Property(property: 'related_models', type: 'integer'),
+                        new OA\Property(property: 'total_publishers', type: 'integer'),
+                        new OA\Property(property: 'active_publishers', type: 'integer'),
+                        new OA\Property(
+                            property: 'publishes_by_status',
+                            type: 'object',
+                            additionalProperties: new OA\Schema(type: 'integer')
+                        ),
+                        new OA\Property(
+                            property: 'model_specific',
+                            type: 'object',
+                            nullable: true,
+                            properties: [
+                                new OA\Property(property: 'model_type', type: 'string'),
+                                new OA\Property(property: 'total_models', type: 'integer'),
+                                new OA\Property(property: 'publishers', type: 'integer')
+                            ]
+                        )
+                    ]
+                )
+            )
+        ]
+    )]
     public function getStats(Request $request): JsonResponse
     {
         $stats = [
@@ -263,6 +652,35 @@ class HashChangeDetectorApiController extends Controller
      * POST /api/hash-change-detector/retry-publishes
      * Body: { "publisher_id": 1 } (optional)
      */
+    #[OA\Post(
+        path: '/retry-publishes',
+        summary: 'Retry failed or deferred publishes',
+        tags: ['Publishing'],
+        requestBody: new OA\RequestBody(
+            required: false,
+            content: new OA\JsonContent(
+                properties: [
+                    new OA\Property(
+                        property: 'publisher_id',
+                        type: 'integer',
+                        description: 'Retry only for specific publisher'
+                    )
+                ]
+            )
+        ),
+        responses: [
+            new OA\Response(
+                response: 200,
+                description: 'Retry jobs dispatched',
+                content: new OA\JsonContent(
+                    properties: [
+                        new OA\Property(property: 'message', type: 'string', example: 'Retry jobs dispatched'),
+                        new OA\Property(property: 'count', type: 'integer', example: 5)
+                    ]
+                )
+            )
+        ]
+    )]
     public function retryPublishes(Request $request): JsonResponse
     {
         $query = Publish::whereIn('status', ['failed', 'deferred']);
@@ -302,6 +720,61 @@ class HashChangeDetectorApiController extends Controller
      * PATCH /api/hash-change-detector/publishers/{id}
      * Body: { "status": "active" } or { "status": "inactive" }
      */
+    #[OA\Patch(
+        path: '/publishers/{id}',
+        summary: 'Update publisher status',
+        tags: ['Publishing'],
+        parameters: [
+            new OA\Parameter(
+                name: 'id',
+                in: 'path',
+                required: true,
+                description: 'Publisher ID',
+                schema: new OA\Schema(type: 'integer')
+            )
+        ],
+        requestBody: new OA\RequestBody(
+            required: true,
+            content: new OA\JsonContent(
+                required: ['status'],
+                properties: [
+                    new OA\Property(
+                        property: 'status',
+                        type: 'string',
+                        enum: ['active', 'inactive']
+                    )
+                ]
+            )
+        ),
+        responses: [
+            new OA\Response(
+                response: 200,
+                description: 'Publisher updated',
+                content: new OA\JsonContent(
+                    properties: [
+                        new OA\Property(property: 'message', type: 'string'),
+                        new OA\Property(
+                            property: 'publisher',
+                            type: 'object',
+                            properties: [
+                                new OA\Property(property: 'id', type: 'integer'),
+                                new OA\Property(property: 'name', type: 'string'),
+                                new OA\Property(property: 'status', type: 'string')
+                            ]
+                        )
+                    ]
+                )
+            ),
+            new OA\Response(
+                response: 404,
+                description: 'Publisher not found'
+            ),
+            new OA\Response(
+                response: 422,
+                description: 'Validation error'
+            )
+        ]
+    )]
     public function updatePublisher(Request $request, int $publisherId): JsonResponse
     {
         $request->validate([
@@ -331,6 +804,59 @@ class HashChangeDetectorApiController extends Controller
      * POST /api/hash-change-detector/initialize-hashes
      * Body: { "model_type": "App\\Models\\User", "chunk_size": 100 }
      */
+    #[OA\Post(
+        path: '/initialize-hashes',
+        summary: 'Initialize hashes for models',
+        description: 'Creates hash records for models that do not have them',
+        tags: ['Hash Management'],
+        requestBody: new OA\RequestBody(
+            required: true,
+            content: new OA\JsonContent(
+                required: ['model_type'],
+                properties: [
+                    new OA\Property(
+                        property: 'model_type',
+                        type: 'string',
+                        description: 'Model type to initialize',
+                        example: 'App\\Models\\User'
+                    ),
+                    new OA\Property(
+                        property: 'chunk_size',
+                        type: 'integer',
+                        description: 'Number of models to process at once',
+                        minimum: 1,
+                        maximum: 1000,
+                        default: 100
+                    )
+                ]
+            )
+        ),
+        responses: [
+            new OA\Response(
+                response: 200,
+                description: 'Initialization completed',
+                content: new OA\JsonContent(
+                    properties: [
+                        new OA\Property(property: 'message', type: 'string', example: 'Hash initialization completed'),
+                        new OA\Property(property: 'model_type', type: 'string'),
+                        new OA\Property(property: 'initialized_count', type: 'integer')
+                    ]
+                )
+            ),
+            new OA\Response(
+                response: 400,
+                description: 'Model does not implement Hashable contract'
+            ),
+            new OA\Response(
+                response: 404,
+                description: 'Model type not found'
+            ),
+            new OA\Response(
+                response: 422,
+                description: 'Validation error'
+            )
+        ]
+    )]
     public function initializeHashes(Request $request): JsonResponse
     {
         $request->validate([
@@ -403,3 +929,47 @@ class HashChangeDetectorApiController extends Controller
         return $modelType;
     }
 }
+
+// OpenAPI Schema Definitions
+#[OA\Schema(
+    schema: 'Publish',
+    properties: [
+        new OA\Property(property: 'id', type: 'integer'),
+        new OA\Property(property: 'hash_id', type: 'integer'),
+        new OA\Property(property: 'publisher_id', type: 'integer'),
+        new OA\Property(property: 'published_hash', type: 'string'),
+        new OA\Property(property: 'status', type: 'string', enum: ['pending', 'dispatched', 'published', 'failed', 'deferred']),
+        new OA\Property(property: 'attempts', type: 'integer'),
+        new OA\Property(property: 'last_error', type: 'string', nullable: true),
+        new OA\Property(property: 'next_try', type: 'string', format: 'date-time', nullable: true),
+        new OA\Property(property: 'published_at', type: 'string', format: 'date-time', nullable: true),
+        new OA\Property(property: 'created_at', type: 'string', format: 'date-time'),
+        new OA\Property(property: 'updated_at', type: 'string', format: 'date-time'),
+        new OA\Property(property: 'publisher', ref: '#/components/schemas/Publisher', nullable: true)
+    ]
+)]
+#[OA\Schema(
+    schema: 'Publisher',
+    properties: [
+        new OA\Property(property: 'id', type: 'integer'),
+        new OA\Property(property: 'name', type: 'string'),
+        new OA\Property(property: 'model_type', type: 'string'),
+        new OA\Property(property: 'publisher_class', type: 'string'),
+        new OA\Property(property: 'status', type: 'string', enum: ['active', 'inactive']),
+        new OA\Property(property: 'config', type: 'object', nullable: true),
+        new OA\Property(property: 'created_at', type: 'string', format: 'date-time'),
+        new OA\Property(property: 'updated_at', type: 'string', format: 'date-time')
+    ]
+)]
+#[OA\Schema(
+    schema: 'PaginationMeta',
+    properties: [
+        new OA\Property(property: 'current_page', type: 'integer'),
+        new OA\Property(property: 'from', type: 'integer', nullable: true),
+        new OA\Property(property: 'last_page', type: 'integer'),
+        new OA\Property(property: 'per_page', type: 'integer'),
+        new OA\Property(property: 'to', type: 'integer', nullable: true),
+        new OA\Property(property: 'total', type: 'integer')
+    ]
+)]
+class HashChangeDetectorApiSchemas {}

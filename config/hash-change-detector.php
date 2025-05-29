@@ -64,10 +64,15 @@ return [
     |--------------------------------------------------------------------------
     |
     | Configuration for API routes registration.
+    | 
+    | Note: The API controllers use OpenAPI PHP attributes for documentation.
+    | If you want to use Swagger documentation, ensure zircote/swagger-php
+    | is installed in your project. The API will work without it, but you
+    | won't get automatic documentation generation.
     |
     */
     'api' => [
-        'enabled' => env('HASH_DETECTOR_API_ENABLED', false),
+        'enabled' => env('HASH_DETECTOR_API_ENABLED', true),
         'prefix' => 'api/hash-change-detector',
         'middleware' => ['api'],
     ],

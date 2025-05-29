@@ -18,6 +18,11 @@ use Illuminate\Support\Facades\Route;
 |     ->middleware(['api', 'auth:api'])
 |     ->group(base_path('vendor/ameax/laravel-hash-change-detector/routes/api.php'));
 |
+| For OpenAPI/Swagger documentation, ensure l5-swagger is installed and run:
+| php artisan l5-swagger:generate
+|
+| The API documentation will be available at: /api/documentation
+|
 */
 
 // Model-specific endpoints

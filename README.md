@@ -47,6 +47,16 @@ Optionally publish the config:
 php artisan vendor:publish --tag="laravel-hash-change-detector-config"
 ```
 
+### Optional: API Documentation with Swagger
+
+If you want to use the included API controllers with automatic Swagger documentation:
+
+```bash
+composer require zircote/swagger-php
+```
+
+The API controllers include comprehensive OpenAPI attributes for automatic documentation generation with l5-swagger. See [Swagger Integration Guide](docs/swagger-integration.md) for details.
+
 ## Quick Start
 
 ### 1. Make Your Model Hashable
