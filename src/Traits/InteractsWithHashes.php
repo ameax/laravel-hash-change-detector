@@ -16,14 +16,17 @@ trait InteractsWithHashes
     {
         static::created(function ($model) {
             $model->updateHash();
+            $model->updateParentHashes();
         });
 
         static::updated(function ($model) {
             $model->updateHash();
+            $model->updateParentHashes();
         });
 
         static::deleted(function ($model) {
             $model->deleteHash();
+            $model->updateParentHashes();
         });
     }
 
@@ -165,10 +168,33 @@ trait InteractsWithHashes
         }
         
         if ($related instanceof Collection) {
-            return $related->map(fn($model) => $model->calculateAttributeHash());
+            // Ensure related models have hash records with parent reference
+            return $related->map(function($model) {
+                $this->ensureRelatedHashHasParentReference($model);
+                return $model->calculateAttributeHash();
+            });
         }
         
+        $this->ensureRelatedHashHasParentReference($related);
         return collect([$related->calculateAttributeHash()]);
+    }
+
+    /**
+     * Ensure related model hash has parent reference.
+     */
+    protected function ensureRelatedHashHasParentReference($relatedModel): void
+    {
+        if (!$relatedModel || !method_exists($relatedModel, 'getCurrentHash')) {
+            return;
+        }
+        
+        $hash = $relatedModel->getCurrentHash();
+        if ($hash && (!$hash->main_model_type || !$hash->main_model_id)) {
+            $hash->update([
+                'main_model_type' => get_class($this),
+                'main_model_id' => $this->getKey(),
+            ]);
+        }
     }
 
     /**
@@ -176,13 +202,16 @@ trait InteractsWithHashes
      */
     protected function updateParentHashes(): void
     {
-        $parentHashes = Hash::where('main_model_type', get_class($this))
-            ->where('main_model_id', $this->getKey())
-            ->get();
+        // This method should be overridden in models that have parent relationships
+        // Default implementation checks for common parent relation names
+        $parentMethods = ['parent', 'owner', 'user'];
         
-        foreach ($parentHashes as $parentHash) {
-            if ($parentHash->hashable) {
-                $parentHash->hashable->updateHash();
+        foreach ($parentMethods as $method) {
+            if (method_exists($this, $method)) {
+                $parent = $this->$method;
+                if ($parent && method_exists($parent, 'updateHash')) {
+                    $parent->updateHash();
+                }
             }
         }
     }

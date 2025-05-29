@@ -18,7 +18,8 @@ return new class extends Migration
             $table->morphs('hashable');
             $table->string('attribute_hash', 32);
             $table->string('composite_hash', 32)->nullable();
-            $table->nullableMorphs('main_model');
+            $table->string('main_model_type')->nullable();
+            $table->unsignedBigInteger('main_model_id')->nullable();
             $table->timestamps();
 
             // Index for finding related hashes of a main model
