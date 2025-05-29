@@ -1,12 +1,12 @@
 <?php
 
-namespace VendorName\Skeleton\Commands;
+namespace ameax\HashChangeDetector\Commands;
 
 use Illuminate\Console\Command;
 
-class SkeletonCommand extends Command
+class HashChangeDetectorCommand extends Command
 {
-    public $signature = 'skeleton';
+    public $signature = 'laravel-hash-change-detector';
 
     public $description = 'My command';
 

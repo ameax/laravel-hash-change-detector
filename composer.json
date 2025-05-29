@@ -1,17 +1,17 @@
 {
-    "name": ":vendor_slug/:package_slug",
-    "description": ":package_description",
+    "name": "ameax/laravel-hash-change-detector",
+    "description": "This is my package laravel-hash-change-detector",
     "keywords": [
-        ":vendor_name",
+        "ameax Unternehmenssoftware",
         "laravel",
-        ":package_slug"
+        "laravel-hash-change-detector"
     ],
-    "homepage": "https://github.com/:vendor_slug/:package_slug",
+    "homepage": "https://github.com/ameax/laravel-hash-change-detector",
     "license": "MIT",
     "authors": [
         {
-            "name": ":author_name",
-            "email": "author@domain.com",
+            "name": "Michael Schmidt",
+            "email": "ms@aranes.de",
             "role": "Developer"
         }
     ],
@@ -35,13 +35,13 @@
     },
     "autoload": {
         "psr-4": {
-            "VendorName\\Skeleton\\": "src/",
-            "VendorName\\Skeleton\\Database\\Factories\\": "database/factories/"
+            "ameax\\HashChangeDetector\\": "src/",
+            "ameax\\HashChangeDetector\\Database\\Factories\\": "database/factories/"
         }
     },
     "autoload-dev": {
         "psr-4": {
-            "VendorName\\Skeleton\\Tests\\": "tests/",
+            "ameax\\HashChangeDetector\\Tests\\": "tests/",
             "Workbench\\App\\": "workbench/app/"
         }
     },
@@ -63,10 +63,10 @@
     "extra": {
         "laravel": {
             "providers": [
-                "VendorName\\Skeleton\\SkeletonServiceProvider"
+                "ameax\\HashChangeDetector\\HashChangeDetectorServiceProvider"
             ],
             "aliases": {
-                "Skeleton": "VendorName\\Skeleton\\Facades\\Skeleton"
+                "HashChangeDetector": "ameax\\HashChangeDetector\\Facades\\HashChangeDetector"
             }
         }
     },
