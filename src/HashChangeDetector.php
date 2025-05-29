@@ -23,8 +23,6 @@ class HashChangeDetector
 
     /**
      * Get all publishers for a model.
-     *
-     * @return \Illuminate\Database\Eloquent\Collection
      */
     public function getPublishersForModel(string $modelClass): \Illuminate\Database\Eloquent\Collection
     {
@@ -33,8 +31,6 @@ class HashChangeDetector
 
     /**
      * Activate a publisher.
-     *
-     * @param  int|Publisher  $publisher
      */
     public function activatePublisher(int|Publisher $publisher): bool
     {
@@ -51,8 +47,6 @@ class HashChangeDetector
 
     /**
      * Deactivate a publisher.
-     *
-     * @param  int|Publisher  $publisher
      */
     public function deactivatePublisher(int|Publisher $publisher): bool
     {

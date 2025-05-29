@@ -64,7 +64,7 @@ return [
     |--------------------------------------------------------------------------
     |
     | Configuration for API routes registration.
-    | 
+    |
     | Note: The API controllers use OpenAPI PHP attributes for documentation.
     | If you want to use Swagger documentation, ensure zircote/swagger-php
     | is installed in your project. The API will work without it, but you

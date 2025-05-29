@@ -42,7 +42,6 @@ trait SyncsFromExternalSources
      * @param  array  $attributes  Attributes to find the model
      * @param  array  $values  Values to update
      * @param  string|array|null  $sourcePublisher  Publisher(s) that provided this data
-     * @return static
      */
     public static function syncOrCreateFromExternal(array $attributes, array $values = [], array|string|null $sourcePublisher = null): static
     {
@@ -75,7 +74,6 @@ trait SyncsFromExternalSources
      * @param  array  $items  Array of items to sync
      * @param  string  $keyAttribute  Attribute to use as unique key
      * @param  string|array|null  $sourcePublisher  Publisher(s) that provided this data
-     * @return \Illuminate\Support\Collection
      */
     public static function bulkSyncFromExternal(array $items, string $keyAttribute = 'id', array|string|null $sourcePublisher = null): \Illuminate\Support\Collection
     {

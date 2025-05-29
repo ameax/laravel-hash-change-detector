@@ -38,7 +38,7 @@ class HandleRelatedModelUpdated
         if (! method_exists($model, 'getCurrentHash')) {
             return;
         }
-        
+
         // Get the hash record to find main models
         $hash = $model->getCurrentHash();
         if ($hash && $hash->main_model_type && $hash->main_model_id) {

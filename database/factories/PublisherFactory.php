@@ -16,7 +16,7 @@ class PublisherFactory extends Factory
     public function definition(): array
     {
         return [
-            'name' => $this->faker->unique()->words(3, true) . ' Publisher',
+            'name' => $this->faker->unique()->words(3, true).' Publisher',
             'model_type' => TestModel::class,
             'publisher_class' => LogPublisher::class,
             'status' => $this->faker->randomElement(['active', 'inactive']),

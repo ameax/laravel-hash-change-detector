@@ -8,11 +8,10 @@ use OpenApi\Attributes as OA;
 
 /**
  * Shared OpenAPI schema definitions for the Hash Change Detector API.
- * 
+ *
  * This file contains reusable schema components that are referenced
  * throughout the API documentation.
  */
-
 #[OA\Schema(
     schema: 'Hash',
     description: 'Hash record for tracking model changes',
@@ -25,7 +24,7 @@ use OpenApi\Attributes as OA;
         new OA\Property(property: 'main_model_type', type: 'string', nullable: true, description: 'Parent model type if this is a related model'),
         new OA\Property(property: 'main_model_id', type: 'integer', nullable: true, description: 'Parent model ID if this is a related model'),
         new OA\Property(property: 'created_at', type: 'string', format: 'date-time'),
-        new OA\Property(property: 'updated_at', type: 'string', format: 'date-time')
+        new OA\Property(property: 'updated_at', type: 'string', format: 'date-time'),
     ]
 )]
 #[OA\Schema(
@@ -52,19 +51,19 @@ use OpenApi\Attributes as OA;
                 items: new OA\Items(type: 'string')
             ),
             example: ['field_name' => ['The field is required.']]
-        )
+        ),
     ]
 )]
 #[OA\Schema(
     schema: 'ErrorResponse',
     properties: [
-        new OA\Property(property: 'error', type: 'string', description: 'Error message')
+        new OA\Property(property: 'error', type: 'string', description: 'Error message'),
     ]
 )]
 #[OA\Schema(
     schema: 'SuccessResponse',
     properties: [
-        new OA\Property(property: 'message', type: 'string', description: 'Success message')
+        new OA\Property(property: 'message', type: 'string', description: 'Success message'),
     ]
 )]
 #[OA\Schema(
@@ -73,7 +72,7 @@ use OpenApi\Attributes as OA;
         new OA\Property(property: 'class', type: 'string', description: 'Fully qualified class name'),
         new OA\Property(property: 'name', type: 'string', description: 'Human-readable name'),
         new OA\Property(property: 'description', type: 'string', description: 'Description of what this publisher does'),
-        new OA\Property(property: 'abstract', type: 'boolean', nullable: true, description: 'Whether this is an abstract base class')
+        new OA\Property(property: 'abstract', type: 'boolean', nullable: true, description: 'Whether this is an abstract base class'),
     ]
 )]
 #[OA\Schema(
@@ -90,7 +89,7 @@ use OpenApi\Attributes as OA;
             type: 'array',
             items: new OA\Items(type: 'string'),
             description: 'Array of publisher names to publish to'
-        )
+        ),
     ]
 )]
 #[OA\Schema(
@@ -99,7 +98,7 @@ use OpenApi\Attributes as OA;
         new OA\Property(property: 'first', type: 'string', nullable: true, format: 'uri'),
         new OA\Property(property: 'last', type: 'string', nullable: true, format: 'uri'),
         new OA\Property(property: 'prev', type: 'string', nullable: true, format: 'uri'),
-        new OA\Property(property: 'next', type: 'string', nullable: true, format: 'uri')
+        new OA\Property(property: 'next', type: 'string', nullable: true, format: 'uri'),
     ]
 )]
 #[OA\Schema(
@@ -110,7 +109,7 @@ use OpenApi\Attributes as OA;
         new OA\Property(property: 'model_type', type: 'string'),
         new OA\Property(property: 'publisher_class', type: 'string'),
         new OA\Property(property: 'status', type: 'string', enum: ['active', 'inactive'], default: 'active'),
-        new OA\Property(property: 'config', type: 'object', nullable: true)
+        new OA\Property(property: 'config', type: 'object', nullable: true),
     ]
 )]
 #[OA\Schema(
@@ -118,7 +117,7 @@ use OpenApi\Attributes as OA;
     properties: [
         new OA\Property(property: 'name', type: 'string', maxLength: 255),
         new OA\Property(property: 'status', type: 'string', enum: ['active', 'inactive']),
-        new OA\Property(property: 'config', type: 'object', nullable: true)
+        new OA\Property(property: 'config', type: 'object', nullable: true),
     ]
 )]
 #[OA\Schema(
@@ -130,7 +129,7 @@ use OpenApi\Attributes as OA;
             type: 'array',
             items: new OA\Items(type: 'integer')
         ),
-        new OA\Property(property: 'status', type: 'string', enum: ['active', 'inactive'])
+        new OA\Property(property: 'status', type: 'string', enum: ['active', 'inactive']),
     ]
 )]
 #[OA\Schema(
@@ -138,19 +137,19 @@ use OpenApi\Attributes as OA;
     required: ['model_type'],
     properties: [
         new OA\Property(property: 'model_type', type: 'string'),
-        new OA\Property(property: 'chunk_size', type: 'integer', minimum: 1, maximum: 1000, default: 100)
+        new OA\Property(property: 'chunk_size', type: 'integer', minimum: 1, maximum: 1000, default: 100),
     ]
 )]
 #[OA\Schema(
     schema: 'DetectChangesRequest',
     properties: [
-        new OA\Property(property: 'model_type', type: 'string', nullable: true)
+        new OA\Property(property: 'model_type', type: 'string', nullable: true),
     ]
 )]
 #[OA\Schema(
     schema: 'RetryPublishesRequest',
     properties: [
-        new OA\Property(property: 'publisher_id', type: 'integer', nullable: true)
+        new OA\Property(property: 'publisher_id', type: 'integer', nullable: true),
     ]
 )]
 #[OA\Schema(
@@ -162,7 +161,7 @@ use OpenApi\Attributes as OA;
             properties: [
                 new OA\Property(property: 'publisher_id', type: 'integer'),
                 new OA\Property(property: 'model_id', type: 'integer'),
-                new OA\Property(property: 'config', type: 'object', nullable: true)
+                new OA\Property(property: 'config', type: 'object', nullable: true),
             ]
         ),
         new OA\Schema(
@@ -171,9 +170,9 @@ use OpenApi\Attributes as OA;
                 new OA\Property(property: 'publisher_class', type: 'string'),
                 new OA\Property(property: 'model_type', type: 'string'),
                 new OA\Property(property: 'model_id', type: 'integer'),
-                new OA\Property(property: 'config', type: 'object', nullable: true)
+                new OA\Property(property: 'config', type: 'object', nullable: true),
             ]
-        )
+        ),
     ]
 )]
 class OpenApiSchemas

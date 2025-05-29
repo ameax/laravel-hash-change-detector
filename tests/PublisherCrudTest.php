@@ -10,7 +10,7 @@ use ameax\HashChangeDetector\Tests\TestModels\TestModel;
 beforeEach(function () {
     // Register API routes for testing
     Route::prefix('api/hash-change-detector')
-        ->group(__DIR__ . '/../routes/api.php');
+        ->group(__DIR__.'/../routes/api.php');
 });
 
 it('lists publishers with pagination', function () {
@@ -46,7 +46,7 @@ it('filters publishers by model type', function () {
         'status' => 'active',
     ]);
 
-    $response = $this->getJson('/api/hash-change-detector/publishers?model_type=' . urlencode(TestModel::class));
+    $response = $this->getJson('/api/hash-change-detector/publishers?model_type='.urlencode(TestModel::class));
 
     $response->assertOk()
         ->assertJsonCount(1, 'data')
@@ -151,10 +151,10 @@ it('shows a publisher with statistics', function () {
     // Create test model without events to avoid conflicts
     $dispatcher = TestModel::getEventDispatcher();
     TestModel::unsetEventDispatcher();
-    
+
     $model1 = TestModel::create(['name' => 'Test 1']);
     $model2 = TestModel::create(['name' => 'Test 2']);
-    
+
     TestModel::setEventDispatcher($dispatcher);
 
     // Manually create hashes
@@ -369,10 +369,10 @@ it('gets publisher statistics', function () {
     // Create models without events
     $dispatcher = TestModel::getEventDispatcher();
     TestModel::unsetEventDispatcher();
-    
+
     $model1 = TestModel::create(['name' => 'Test 1']);
     $model2 = TestModel::create(['name' => 'Test 2']);
-    
+
     TestModel::setEventDispatcher($dispatcher);
 
     // Manually create hashes
@@ -382,7 +382,7 @@ it('gets publisher statistics', function () {
         'attribute_hash' => md5('Test 1'),
         'composite_hash' => md5('Test 1'),
     ]);
-    
+
     $hash2 = \ameax\HashChangeDetector\Models\Hash::create([
         'hashable_type' => TestModel::class,
         'hashable_id' => $model2->id,

@@ -15,8 +15,8 @@ use Illuminate\Support\Facades\Route;
 beforeEach(function () {
     // Register API routes for testing
     Route::prefix('api/hash-change-detector')
-        ->group(__DIR__ . '/../routes/api.php');
-    
+        ->group(__DIR__.'/../routes/api.php');
+
     // Clear queue
     Queue::fake();
 });
@@ -47,7 +47,7 @@ it('gets model hash information', function () {
 
 it('returns 404 for non-existent model hash', function () {
     $response = $this->getJson('/api/hash-change-detector/models/InvalidModel/999/hash');
-    
+
     $response->assertNotFound()
         ->assertJson(['error' => 'Model type not found']);
 });
@@ -80,7 +80,7 @@ it('forces publish for a model', function () {
 
     // Verify job was dispatched
     Queue::assertPushed(PublishModelJob::class);
-    
+
     // Verify publish record was created
     expect(Publish::count())->toBe(1);
     expect(Publish::first()->status)->toBe('pending');
@@ -180,7 +180,7 @@ it('filters publish history by status', function () {
     ]);
 
     $hash = $model->getCurrentHash();
-    
+
     // Create published record
     Publish::create([
         'hash_id' => $hash->id,
@@ -264,7 +264,7 @@ it('filters publishers by model type', function () {
         'status' => 'active',
     ]);
 
-    $response = $this->getJson('/api/hash-change-detector/publishers?model_type=' . urlencode(TestModel::class));
+    $response = $this->getJson('/api/hash-change-detector/publishers?model_type='.urlencode(TestModel::class));
 
     // The new CRUD controller returns paginated results
     $response->assertOk()
@@ -306,7 +306,7 @@ it('gets statistics', function () {
     // Create some test data
     TestModel::create(['name' => 'Model 1']);
     TestModel::create(['name' => 'Model 2']);
-    
+
     Publisher::create([
         'name' => 'Publisher 1',
         'model_type' => TestModel::class,
@@ -331,7 +331,7 @@ it('gets model-specific statistics', function () {
     TestModel::create(['name' => 'Model 1']);
     TestModel::create(['name' => 'Model 2']);
 
-    $response = $this->getJson('/api/hash-change-detector/stats?model_type=' . urlencode(TestModel::class));
+    $response = $this->getJson('/api/hash-change-detector/stats?model_type='.urlencode(TestModel::class));
 
     $response->assertOk()
         ->assertJsonStructure([
@@ -385,7 +385,7 @@ it('retries failed publishes', function () {
         ]);
 
     Queue::assertPushed(PublishModelJob::class);
-    
+
     // Verify publish was reset
     $publish->refresh();
     expect($publish->status)->toBe('pending');
@@ -420,10 +420,10 @@ it('initializes hashes for models', function () {
     // Create models without triggering hash creation
     $dispatcher = TestModel::getEventDispatcher();
     TestModel::unsetEventDispatcher();
-    
+
     TestModel::create(['name' => 'Model 1']);
     TestModel::create(['name' => 'Model 2']);
-    
+
     TestModel::setEventDispatcher($dispatcher);
 
     // Verify no hashes exist
@@ -455,12 +455,12 @@ it('validates required fields for hash initialization', function () {
 it('resolves short model names', function () {
     // This test assumes TestModel could be resolved without full namespace
     // In real usage, this would work with App\Models\User -> User
-    $controller = new HashChangeDetectorApiController();
-    
+    $controller = new HashChangeDetectorApiController;
+
     // Test full class name
     $fullClass = $controller->resolveModelClass(TestModel::class);
     expect($fullClass)->toBe(TestModel::class);
-    
+
     // Test short name resolution
     $shortClass = $controller->resolveModelClass('TestModel');
     expect($shortClass)->toBe(TestModel::class); // Should resolve to full class

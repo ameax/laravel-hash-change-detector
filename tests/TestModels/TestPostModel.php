@@ -49,16 +49,16 @@ class TestPostModel extends Model implements Hashable
     public function getParentModels(): Collection
     {
         $parents = collect();
-        
+
         // Load user relationship if not already loaded
         if (! $this->relationLoaded('user')) {
             $this->load('user.country');
         }
-        
+
         if ($this->user && $this->user->country) {
             $parents->push($this->user->country);
         }
-        
+
         return $parents;
     }
 }

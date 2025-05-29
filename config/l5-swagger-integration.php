@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 /**
  * L5-Swagger Integration Configuration for Laravel Hash Change Detector
- * 
+ *
  * Add this configuration to your main application's config/l5-swagger.php file
  * to include the Hash Change Detector API documentation.
  */
@@ -17,7 +17,7 @@ return [
     'annotations' => [
         // Your existing application paths...
         base_path('app'),
-        
+
         // Add Hash Change Detector API controllers
         base_path('vendor/ameax/laravel-hash-change-detector/src/Http/Controllers'),
     ],

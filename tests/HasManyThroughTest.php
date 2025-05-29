@@ -46,7 +46,7 @@ it('tracks posts through users in country hash', function () {
 
     // Debug: Check if relationships work
     $country->load('posts');
-    
+
     // Get initial hash
     $initialHash = $country->getCurrentHash();
     expect($initialHash)->not->toBeNull();
@@ -172,7 +172,7 @@ it('updates country hash when a post is deleted', function () {
 
     // Country's composite hash should change
     expect($updatedHash->composite_hash)->not->toBe($initialCompositeHash);
-    
+
     // Verify only one post remains
     expect($country->posts()->count())->toBe(1);
 });
@@ -262,10 +262,10 @@ it('handles multiple countries with shared posts correctly', function () {
     // Each country should only see their own posts
     $usa->load('posts');
     $canada->load('posts');
-    
+
     expect($usa->posts)->toHaveCount(1);
     expect($usa->posts->first()->title)->toBe('US Post');
-    
+
     expect($canada->posts)->toHaveCount(1);
     expect($canada->posts->first()->title)->toBe('CA Post');
 });
