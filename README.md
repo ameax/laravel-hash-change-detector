@@ -5,189 +5,43 @@
 [![GitHub Code Style Action Status](https://img.shields.io/github/actions/workflow/status/ameax/laravel-hash-change-detector/fix-php-code-style-issues.yml?branch=main&label=code%20style&style=flat-square)](https://github.com/ameax/laravel-hash-change-detector/actions?query=workflow%3A"Fix+PHP+code+style+issues"+branch%3Amain)
 [![Total Downloads](https://img.shields.io/packagist/dt/ameax/laravel-hash-change-detector.svg?style=flat-square)](https://packagist.org/packages/ameax/laravel-hash-change-detector)
 
-A Laravel package for detecting changes in Eloquent models through hash-based tracking and automatically publishing changes to external systems. Perfect for maintaining data synchronization across multiple platforms, APIs, or services.
+Detect changes in your Laravel models through hash-based tracking and automatically publish updates to external systems. Perfect for maintaining data synchronization across multiple platforms, APIs, or services.
 
-## Key Features
+## Table of Contents
 
-- **Hash-based change detection** for models and their relationships
-- **Automatic publishing** to external systems when changes are detected  
-- **Dual hash calculation** methods (PHP and MySQL) for different use cases
-- **Smart retry mechanism** with exponential backoff for failed publishes
-- **Support for multiple publishers** per model
-
-## Support us
-
-[<img src="https://github-ads.s3.eu-central-1.amazonaws.com/laravel-hash-change-detector.jpg?t=1" width="419px" />](https://spatie.be/github-ad-click/laravel-hash-change-detector)
-
-We invest a lot of resources into creating [best in class open source packages](https://spatie.be/open-source). You can support us by [buying one of our paid products](https://spatie.be/open-source/support-us).
-
-We highly appreciate you sending us a postcard from your hometown, mentioning which of our package(s) you are using. You'll find our address on [our contact page](https://spatie.be/about-us). We publish all received postcards on [our virtual postcard wall](https://spatie.be/open-source/postcards).
-
-## How It Works
-
-### System Architecture
-
-The package consists of three main components working together:
-
-1. **Hash Tracking System**: Monitors changes in models and their relationships
-2. **Change Detection Engine**: Identifies modifications through PHP events or direct database queries
-3. **Publishing Pipeline**: Distributes changes to external systems with retry logic
-
-### Change Detection Lifecycle
-
-#### 1. Model Events (Real-time Detection)
-
-When a model is created, updated, or deleted through Laravel:
-
-```
-Model Change → Boot Trait Hook → Calculate Hash → Compare with Stored Hash
-     ↓                                                      ↓
-Update Parent Hashes ← Fire HashChanged Event ← Hash Different
-     ↓                                    ↓
-Update Composite Hash          Create/Update Publish Records
-                                         ↓
-                              Dispatch PublishModelJob → External System
-```
-
-#### 2. Direct Database Detection (Bulk Detection)
-
-For models updated outside Laravel (e.g., direct database updates, external scripts):
-
-```
-Scheduled Command → DetectChangesJob → SQL Query for All Records
-                                              ↓
-                                    Calculate Hash in Database
-                                              ↓
-                                    Compare with Stored Hashes
-                                              ↓
-                                    Update Changed Records → Trigger Publishing
-```
-
-### Hash Calculation Details
-
-#### Attribute Hash Format
-Attributes are sorted alphabetically and concatenated with pipe separators:
-```
-MD5(active|description|name|price)
-```
-
-Example:
-- Model: `['name' => 'Product', 'price' => 99.99, 'active' => true, 'description' => null]`
-- Sorted: `['active' => true, 'description' => null, 'name' => 'Product', 'price' => 99.99]`
-- String: `"1||Product|99.99"` (booleans become '1'/'0', nulls become '')
-- Hash: `MD5("1||Product|99.99")`
-
-#### Composite Hash Format
-All related model hashes are collected, sorted, and concatenated:
-```
-MD5(main_hash|related_hash_1|related_hash_2|...)
-```
-
-### Publishing Workflow
-
-1. **Change Detection**: Hash mismatch triggers `HashChanged` event
-2. **Event Handling**: `HandleHashChanged` listener creates publish records
-3. **Job Dispatch**: `PublishModelJob` sent to queue
-4. **Retry Logic**: Failed attempts follow exponential backoff
-5. **Status Tracking**: Each attempt updates the `publishes` table
-
-### Database Schema
-
-The package uses three main tables:
-
-- **`hashes`**: Stores attribute and composite hashes for all tracked models
-- **`publishers`**: Defines available publishers for each model type
-- **`publishes`**: Tracks publishing attempts and their status
+- [Installation](#installation)
+- [Quick Start](#quick-start)
+- [Basic Usage](#basic-usage)
+  - [Making a Model Hashable](#making-a-model-hashable)
+  - [Tracking Related Models](#tracking-related-models)
+- [Direct Database Detection](#direct-database-detection)
+- [Publishing System](#publishing-system)
+- [Advanced Usage](#advanced-usage)
+- [Commands](#commands)
+- [Testing](#testing)
 
 ## Installation
-
-You can install the package via composer:
 
 ```bash
 composer require ameax/laravel-hash-change-detector
 ```
 
-You can publish and run the migrations with:
+Publish and run migrations:
 
 ```bash
 php artisan vendor:publish --tag="laravel-hash-change-detector-migrations"
 php artisan migrate
 ```
 
-You can publish the config file with:
+Optionally publish the config:
 
 ```bash
 php artisan vendor:publish --tag="laravel-hash-change-detector-config"
 ```
 
-## Usage
+## Quick Start
 
-### Relation Tracking
-
-The package automatically tracks changes in related models using an event-driven approach:
-
-1. **Event-Driven Updates**: When a related model changes, it fires a `RelatedModelUpdated` event
-2. **Parent Notification**: Child models define their parent relationships via `getParentModels()`
-3. **Automatic Reloading**: Parent models automatically reload their tracked relations before recalculating hashes
-4. **Clean Separation**: Each model is responsible for its own hash calculation
-
-#### Implementation Example
-
-```php
-// Child Model
-class OrderItem extends Model implements Hashable
-{
-    use InteractsWithHashes;
-    
-    public function order()
-    {
-        return $this->belongsTo(Order::class);
-    }
-    
-    // Define which models should be notified when this model changes
-    public function getParentModels(): Collection
-    {
-        return collect([$this->order]);
-    }
-}
-
-// Parent Model
-class Order extends Model implements Hashable
-{
-    use InteractsWithHashes;
-    
-    public function getHashableRelations(): array
-    {
-        return ['orderItems']; // Tracks changes in items
-    }
-}
-```
-
-#### Update Flow
-```
-OrderItem price changes
-  ↓
-OrderItem hash updates → Fires RelatedModelUpdated event
-  ↓
-Event listener calls getParentModels() on OrderItem
-  ↓
-Order model is notified → Reloads 'orderItems' relation
-  ↓
-Order recalculates composite hash with fresh data
-  ↓
-Publishing triggered if hash changed
-```
-
-#### Benefits
-
-- **Loose Coupling**: Child models don't need to know how parent models track relations
-- **Multiple Parents**: A model can easily notify multiple parent models
-- **Maintainable**: Parent models can change their tracked relations without updating children
-- **Testable**: Event-driven architecture is easier to test in isolation
-
-### Making a Model Hashable
-
-Implement the `Hashable` interface on your model:
+### 1. Make Your Model Hashable
 
 ```php
 use ameax\HashChangeDetector\Contracts\Hashable;
@@ -199,36 +53,170 @@ class Product extends Model implements Hashable
     
     public function getHashableAttributes(): array
     {
-        return ['name', 'price', 'description', 'sku'];
+        return ['name', 'price', 'sku'];
     }
     
     public function getHashableRelations(): array
     {
-        return [
-            'variants',           // hasMany
-            'categories',         // belongsToMany
-            'details.specifications'  // hasManyThrough
-        ];
+        return []; // No related models to track
     }
 }
 ```
 
-### Creating Publishers
+That's it! Your model now automatically:
+- Creates a hash when saved
+- Updates the hash when attributes change
+- Triggers events when changes are detected
 
-Create a publisher class that implements the `Publisher` interface:
+## Basic Usage
+
+### Making a Model Hashable
+
+To track changes in a model, implement the `Hashable` interface and use the `InteractsWithHashes` trait:
+
+```php
+use ameax\HashChangeDetector\Contracts\Hashable;
+use ameax\HashChangeDetector\Traits\InteractsWithHashes;
+
+class Order extends Model implements Hashable
+{
+    use InteractsWithHashes;
+    
+    /**
+     * Define which attributes to include in the hash
+     */
+    public function getHashableAttributes(): array
+    {
+        return [
+            'order_number',
+            'total_amount', 
+            'status',
+            'customer_email'
+        ];
+    }
+    
+    /**
+     * Define which relationships to track
+     */
+    public function getHashableRelations(): array
+    {
+        return [
+            'orderItems',     // HasMany relationship
+            'shipping',       // HasOne relationship
+        ];
+    }
+    
+    // Your regular model relationships
+    public function orderItems()
+    {
+        return $this->hasMany(OrderItem::class);
+    }
+    
+    public function shipping()
+    {
+        return $this->hasOne(ShippingDetail::class);
+    }
+}
+```
+
+### Tracking Related Models
+
+When you have parent-child relationships, the child models should also be hashable and define their parent relationships:
+
+```php
+class OrderItem extends Model implements Hashable
+{
+    use InteractsWithHashes;
+    
+    public function getHashableAttributes(): array
+    {
+        return ['product_name', 'quantity', 'price'];
+    }
+    
+    public function getHashableRelations(): array
+    {
+        return []; // Child models typically don't track relations
+    }
+    
+    /**
+     * Define which parent models should be notified of changes
+     */
+    public function getParentModels(): Collection
+    {
+        return collect([$this->order]);
+    }
+    
+    public function order()
+    {
+        return $this->belongsTo(Order::class);
+    }
+}
+```
+
+### How It Works
+
+1. **Individual Hashes**: Each model has its own hash based on `getHashableAttributes()`
+2. **Composite Hashes**: Parent models also have a composite hash that includes hashes from all tracked relations
+3. **Automatic Updates**: When a child changes, it notifies its parents to recalculate their composite hashes
+4. **Event Driven**: All updates trigger events that you can listen to
+
+## Direct Database Detection
+
+The package can detect changes made outside of Laravel (direct SQL updates, external scripts, etc.).
+
+### Setting Up Detection
+
+Add to your scheduler in `app/Console/Kernel.php`:
+
+```php
+protected function schedule(Schedule $schedule)
+{
+    // Detect all changes every 5 minutes
+    $schedule->command('hash-detector:detect-changes')
+        ->everyFiveMinutes();
+        
+    // Or detect changes for specific models
+    $schedule->command('hash-detector:detect-changes', ['model' => Order::class])
+        ->everyFiveMinutes();
+}
+```
+
+### How Direct Detection Works
+
+1. **Calculates hashes in the database** using SQL functions
+2. **Compares with stored hashes** to find changes
+3. **Updates changed records** and triggers events
+4. **Detects deletions** by finding orphaned hash records
+
+### Example Scenario
+
+```sql
+-- Someone updates order directly in database
+UPDATE orders SET total_amount = 150.00 WHERE id = 123;
+
+-- Next detection run will:
+-- 1. Calculate new hash for order 123
+-- 2. Compare with stored hash
+-- 3. Update the hash record
+-- 4. Trigger publishing if configured
+```
+
+## Publishing System
+
+Automatically sync changes to external systems by creating publishers:
+
+### Creating a Publisher
 
 ```php
 use ameax\HashChangeDetector\Contracts\Publisher;
 
-class ProductApiPublisher implements Publisher
+class OrderApiPublisher implements Publisher
 {
     public function publish(Model $model, array $data): bool
     {
-        // Send to external API
-        $response = Http::post('https://api.example.com/products', [
-            'id' => $model->id,
+        $response = Http::post('https://api.example.com/orders', [
+            'order_id' => $model->id,
             'data' => $data,
-            'hash' => $model->getCurrentHash(),
         ]);
         
         return $response->successful();
@@ -236,171 +224,213 @@ class ProductApiPublisher implements Publisher
     
     public function getData(Model $model): array
     {
-        // Prepare data for publishing
         return [
-            'product' => $model->toArray(),
-            'variants' => $model->variants->toArray(),
-            'categories' => $model->categories->pluck('name'),
+            'order' => $model->toArray(),
+            'items' => $model->orderItems->toArray(),
+            'shipping' => $model->shipping?->toArray(),
         ];
     }
 }
 ```
 
-### Configuring Publishers
+### Registering Publishers
 
-Register publishers for your models:
+In a service provider:
 
 ```php
 use ameax\HashChangeDetector\Facades\HashChangeDetector;
 
-// In a service provider or bootstrap file
 HashChangeDetector::registerPublisher(
-    'product-api',
-    Product::class,
-    ProductApiPublisher::class
+    'order-api',
+    Order::class,
+    OrderApiPublisher::class
 );
-
-// Or use the command
-php artisan laravel-hash-change-detector:publisher:create "Product API" Product ProductApiPublisher
 ```
 
-### Available Commands
-
-The package provides several Artisan commands:
+Or via command:
 
 ```bash
-# Detect changes for all or specific models
-php artisan hash-detector:detect-changes [model-class]
-
-# Retry deferred publishes
-php artisan hash-detector:retry-publishes
-
-# Manage publishers
-php artisan hash-detector:publisher:create "Name" "Model\Class" "Publisher\Class"
-php artisan hash-detector:publisher:list [--model=Model\Class] [--status=active]
-php artisan hash-detector:publisher:toggle {id} [--activate] [--deactivate]
+php artisan hash-detector:publisher:create "Order API" Order OrderApiPublisher
 ```
 
-### Scheduling
+### Retry Failed Publishes
 
-Add these to your `app/Console/Kernel.php` for automatic processing:
+Add to your scheduler:
 
 ```php
-protected function schedule(Schedule $schedule)
+$schedule->command('hash-detector:retry-publishes')
+    ->everyFiveMinutes();
+```
+
+## Advanced Usage
+
+### Nested Relations
+
+Track nested relationships using dot notation:
+
+```php
+public function getHashableRelations(): array
 {
-    // Detect changes in models updated outside Laravel
-    $schedule->command('hash-detector:detect-changes')
-        ->everyFiveMinutes();
-    
-    // Retry deferred publishes
-    $schedule->command('hash-detector:retry-publishes')
-        ->everyFiveMinutes();
+    return [
+        'orderItems',           // Direct relation
+        'orderItems.product',   // Nested relation
+    ];
 }
 ```
 
-### Detecting Changes via Direct Database
+### Multiple Parents
 
-For models updated outside Laravel, use the bulk change detector:
+A model can notify multiple parent models:
 
 ```php
-// In a scheduled command
-use ameax\HashChangeDetector\Jobs\DetectChangesJob;
+public function getParentModels(): Collection
+{
+    return collect([
+        $this->order,
+        $this->warehouse,
+        $this->invoice
+    ])->filter(); // Filter removes nulls
+}
+```
 
-// Check specific model type
-DetectChangesJob::dispatch(Product::class);
+### Custom Hash Algorithm
 
-// Or check all registered hashable models
-DetectChangesJob::dispatch();
+In your config file:
+
+```php
+'hash_algorithm' => 'sha256', // Default is 'md5'
+```
+
+### Handling Deletions
+
+Listen for deletion events:
+
+```php
+use ameax\HashChangeDetector\Events\HashableModelDeleted;
+
+class HandleDeletedModel
+{
+    public function handle(HashableModelDeleted $event)
+    {
+        Log::info("Model deleted: {$event->modelClass} ID: {$event->modelId}");
+        
+        // Notify external systems
+        // Clean up related data
+        // etc.
+    }
+}
+```
+
+## Commands
+
+```bash
+# Detect changes in all models
+php artisan hash-detector:detect-changes
+
+# Detect changes in specific model
+php artisan hash-detector:detect-changes "App\Models\Order"
+
+# Retry failed publishes
+php artisan hash-detector:retry-publishes
+
+# List publishers
+php artisan hash-detector:publisher:list
+
+# Toggle publisher status
+php artisan hash-detector:publisher:toggle {id} --activate
+php artisan hash-detector:publisher:toggle {id} --deactivate
+```
+
+## Complete Example
+
+Here's a full example with Order and OrderItem models:
+
+```php
+// app/Models/Order.php
+class Order extends Model implements Hashable
+{
+    use InteractsWithHashes;
+    
+    protected $fillable = ['order_number', 'customer_email', 'total_amount', 'status'];
+    
+    public function getHashableAttributes(): array
+    {
+        return ['order_number', 'customer_email', 'total_amount', 'status'];
+    }
+    
+    public function getHashableRelations(): array
+    {
+        return ['items'];
+    }
+    
+    public function items()
+    {
+        return $this->hasMany(OrderItem::class);
+    }
+}
+
+// app/Models/OrderItem.php
+class OrderItem extends Model implements Hashable
+{
+    use InteractsWithHashes;
+    
+    protected $fillable = ['order_id', 'product_name', 'quantity', 'price'];
+    
+    public function getHashableAttributes(): array
+    {
+        return ['product_name', 'quantity', 'price'];
+    }
+    
+    public function getHashableRelations(): array
+    {
+        return [];
+    }
+    
+    public function getParentModels(): Collection
+    {
+        return collect([$this->order]);
+    }
+    
+    public function order()
+    {
+        return $this->belongsTo(Order::class);
+    }
+}
+
+// Usage
+$order = Order::create([
+    'order_number' => 'ORD-001',
+    'customer_email' => 'customer@example.com',
+    'total_amount' => 100.00,
+    'status' => 'pending'
+]);
+
+$item = $order->items()->create([
+    'product_name' => 'Widget',
+    'quantity' => 2,
+    'price' => 50.00
+]);
+
+// When item changes, order's composite hash updates automatically
+$item->update(['quantity' => 3]);
+
+// Direct database changes are detected by the scheduled job
+DB::table('order_items')->where('id', $item->id)->update(['price' => 60.00]);
 ```
 
 ## Testing
-
-The package includes comprehensive test coverage using Pest PHP. Run tests with:
 
 ```bash
 composer test
 ```
 
-### Test Models
-
-The test suite includes example models that demonstrate best practices:
-
-#### TestModel (Parent)
-```php
-class TestModel extends Model implements Hashable
-{
-    use InteractsWithHashes;
-    
-    public function getHashableAttributes(): array
-    {
-        return ['name', 'description', 'price', 'active'];
-    }
-    
-    public function getHashableRelations(): array
-    {
-        return ['testRelations'];
-    }
-}
-```
-
-#### TestRelationModel (Child)
-```php
-class TestRelationModel extends Model implements Hashable
-{
-    use InteractsWithHashes;
-    
-    public function getParentModels(): Collection
-    {
-        $parents = collect();
-        
-        if ($this->testModel) {
-            $parents->push($this->testModel);
-        }
-        
-        return $parents;
-    }
-}
-```
-
-### Test Coverage
-
-The test suite covers:
-
-1. **Change Detection Tests** (`tests/ChangeDetectionTest.php`)
-   - Hash creation on model creation
-   - Hash updates on attribute changes
-   - Null value handling
-   - Boolean value conversions
-   - Parent composite hash updates
-   - Related model tracking
-   - Consistent hash ordering
-
-2. **MySQL Detection Tests** (`tests/MySQLChangeDetectionTest.php`)
-   - Direct database change detection
-   - Bulk change processing
-   - SQLite compatibility for testing
-   - Hash calculation consistency between PHP and SQL
-
-### Key Testing Insights
-
-1. **Attribute Ordering**: Attributes are always sorted alphabetically for consistent hashing
-2. **Type Handling**: 
-   - Booleans: `true` → `'1'`, `false` → `'0'`
-   - Nulls: `null` → `''` (empty string)
-   - Decimals: Preserved with precision (e.g., `99.99`)
-3. **Parent Updates**: Child models must explicitly call `updateParentHashes()` to propagate changes
-
-## Changelog
-
-Please see [CHANGELOG](CHANGELOG.md) for more information on what has changed recently.
-
 ## Contributing
 
 Please see [CONTRIBUTING](CONTRIBUTING.md) for details.
 
-## Security Vulnerabilities
+## Security
 
-Please review [our security policy](../../security/policy) on how to report security vulnerabilities.
+If you discover any security related issues, please email security@example.com instead of using the issue tracker.
 
 ## Credits
 

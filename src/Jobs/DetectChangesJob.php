@@ -3,6 +3,7 @@
 namespace ameax\HashChangeDetector\Jobs;
 
 use ameax\HashChangeDetector\Models\Hash;
+use ameax\HashChangeDetector\Events\HashableModelDeleted;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Database\Eloquent\Model;
@@ -31,8 +32,10 @@ class DetectChangesJob implements ShouldQueue
     {
         if ($this->modelClass) {
             $this->detectChangesForModel($this->modelClass);
+            $this->detectDeletedModels($this->modelClass);
         } else {
             $this->detectChangesForAllModels();
+            $this->detectAllDeletedModels();
         }
     }
 
@@ -51,6 +54,7 @@ class DetectChangesJob implements ShouldQueue
         
         foreach ($modelTypes as $modelType) {
             $this->detectChangesForModel($modelType);
+            $this->detectDeletedModels($modelType);
         }
     }
 
@@ -144,17 +148,20 @@ class DetectChangesJob implements ShouldQueue
         sort($attributes);
         
         foreach ($attributes as $attribute) {
+            // Quote the attribute name to handle reserved keywords
+            $quotedAttribute = "`{$attribute}`";
+            
             if ($driver === 'sqlite') {
                 // SQLite: Handle booleans specially, use IFNULL and cast to text
                 // Check if attribute is boolean by looking at the model
                 if (in_array($attribute, ['active'])) { // Add more boolean fields as needed
-                    $parts[] = "CASE WHEN m.{$attribute} = 1 THEN '1' WHEN m.{$attribute} = 0 THEN '0' ELSE '' END";
+                    $parts[] = "CASE WHEN m.{$quotedAttribute} = 1 THEN '1' WHEN m.{$quotedAttribute} = 0 THEN '0' ELSE '' END";
                 } else {
-                    $parts[] = "IFNULL(CAST(m.{$attribute} AS TEXT), '')";
+                    $parts[] = "IFNULL(CAST(m.{$quotedAttribute} AS TEXT), '')";
                 }
             } else {
                 // Direct database: Use IFNULL and cast to char
-                $parts[] = "IFNULL(CAST(m.{$attribute} AS CHAR), '')";
+                $parts[] = "IFNULL(CAST(m.{$quotedAttribute} AS CHAR), '')";
             }
         }
         
@@ -176,5 +183,89 @@ class DetectChangesJob implements ShouldQueue
             'sha256' => "SHA2({$concatenated}, 256)",
             default => "MD5({$concatenated})",
         };
+    }
+
+    /**
+     * Detect deleted models for all model types.
+     */
+    protected function detectAllDeletedModels(): void
+    {
+        $hashesTable = config('laravel-hash-change-detector.tables.hashes', 'hashes');
+        
+        $modelTypes = DB::table($hashesTable)
+            ->select('hashable_type')
+            ->distinct()
+            ->pluck('hashable_type');
+        
+        foreach ($modelTypes as $modelType) {
+            $this->detectDeletedModels($modelType);
+        }
+    }
+
+    /**
+     * Detect models that have been deleted but still have hash records.
+     */
+    protected function detectDeletedModels(string $modelClass): void
+    {
+        if (!class_exists($modelClass)) {
+            return;
+        }
+        
+        $model = new $modelClass;
+        $tableName = $model->getTable();
+        $hashesTable = config('laravel-hash-change-detector.tables.hashes', 'hashes');
+        
+        // Find hash records where the model no longer exists
+        $query = "
+            SELECT h.* 
+            FROM {$hashesTable} h
+            LEFT JOIN {$tableName} m ON m.id = h.hashable_id
+            WHERE h.hashable_type = ?
+            AND m.id IS NULL
+        ";
+        
+        $orphanedHashes = DB::select($query, [$modelClass]);
+        
+        foreach ($orphanedHashes as $hashData) {
+            $hash = Hash::find($hashData->id);
+            if (!$hash) {
+                continue;
+            }
+            
+            // Check if this is a related model (has parent reference)
+            if ($hash->main_model_type && $hash->main_model_id) {
+                // This is a related model - notify parent and delete hash
+                $parentModel = $hash->main_model_type::find($hash->main_model_id);
+                if ($parentModel && method_exists($parentModel, 'updateHash')) {
+                    $parentModel->updateHash();
+                }
+                
+                // Delete the orphaned hash
+                $hash->delete();
+            } else {
+                // This is a parent model - fire event before deleting
+                event(new HashableModelDeleted($hash, $modelClass, $hash->hashable_id));
+                
+                // Delete the hash and any related publish records
+                $this->cleanupDeletedModel($hash);
+            }
+        }
+    }
+
+    /**
+     * Clean up hash and related records for a deleted model.
+     */
+    protected function cleanupDeletedModel(Hash $hash): void
+    {
+        $publishesTable = config('laravel-hash-change-detector.tables.publishes', 'publishes');
+        
+        // Delete any pending publishes for this hash
+        DB::table($publishesTable)
+            ->where('hash_id', $hash->id)
+            ->whereIn('status', ['pending', 'dispatched', 'deferred'])
+            ->delete();
+        
+        // Delete the hash record (this will cascade delete publishes due to foreign key)
+        $hash->delete();
     }
 }
