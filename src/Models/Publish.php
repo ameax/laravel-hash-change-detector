@@ -1,11 +1,27 @@
 <?php
 
+declare(strict_types=1);
+
 namespace ameax\HashChangeDetector\Models;
 
-use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+/**
+ * @property int $id
+ * @property int $hash_id
+ * @property int $publisher_id
+ * @property string $published_hash
+ * @property \Illuminate\Support\Carbon|null $published_at
+ * @property string $status
+ * @property int $attempts
+ * @property string|null $last_error
+ * @property \Illuminate\Support\Carbon|null $next_try
+ * @property \Illuminate\Support\Carbon $created_at
+ * @property \Illuminate\Support\Carbon $updated_at
+ * @property-read \ameax\HashChangeDetector\Models\Hash $hash
+ * @property-read \ameax\HashChangeDetector\Models\Publisher $publisher
+ */
 class Publish extends Model
 {
     protected $fillable = [
@@ -69,8 +85,8 @@ class Publish extends Model
 
     public function shouldRetry(): bool
     {
-        return $this->isDeferred() && 
-               $this->next_try && 
+        return $this->isDeferred() &&
+               $this->next_try &&
                $this->next_try->isPast();
     }
 
@@ -99,18 +115,19 @@ class Publish extends Model
     public function markAsDeferred(string $error): void
     {
         $this->attempts++;
-        
+
         $retryIntervals = config('laravel-hash-change-detector.retry_intervals', [
             1 => 30,
             2 => 300,
             3 => 21600,
         ]);
-        
+
         if ($this->attempts > count($retryIntervals)) {
             $this->markAsFailed($error);
+
             return;
         }
-        
+
         $this->update([
             'status' => 'deferred',
             'attempts' => $this->attempts,
@@ -119,14 +136,14 @@ class Publish extends Model
         ]);
     }
 
-    public function scopePendingOrDeferred($query)
+    public function scopePendingOrDeferred(\Illuminate\Database\Eloquent\Builder $query): \Illuminate\Database\Eloquent\Builder
     {
         return $query->where(function ($q) {
             $q->where('status', 'pending')
-              ->orWhere(function ($q) {
-                  $q->where('status', 'deferred')
-                    ->where('next_try', '<=', now());
-              });
+                ->orWhere(function ($q) {
+                    $q->where('status', 'deferred')
+                        ->where('next_try', '<=', now());
+                });
         });
     }
 }

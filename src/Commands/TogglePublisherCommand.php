@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace ameax\HashChangeDetector\Commands;
 
 use ameax\HashChangeDetector\Models\Publisher;
@@ -31,12 +33,13 @@ class TogglePublisherCommand extends Command
     {
         $id = $this->argument('id');
         $publisher = Publisher::find($id);
-        
-        if (!$publisher) {
+
+        if (! $publisher) {
             $this->error("Publisher with ID {$id} not found.");
+
             return self::FAILURE;
         }
-        
+
         // Determine new status
         if ($this->option('activate')) {
             $newStatus = 'active';
@@ -46,11 +49,11 @@ class TogglePublisherCommand extends Command
             // Toggle current status
             $newStatus = $publisher->status === 'active' ? 'inactive' : 'active';
         }
-        
+
         $publisher->update(['status' => $newStatus]);
-        
+
         $this->info("Publisher '{$publisher->name}' is now {$newStatus}.");
-        
+
         return self::SUCCESS;
     }
 }

@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace ameax\HashChangeDetector\Commands;
 
 use ameax\HashChangeDetector\Models\Publisher;
@@ -29,29 +31,31 @@ class ListPublishersCommand extends Command
     public function handle(): int
     {
         $query = Publisher::query();
-        
+
         if ($model = $this->option('model')) {
             $query->where('model_type', $model);
         }
-        
+
         if ($status = $this->option('status')) {
-            if (!in_array($status, ['active', 'inactive'])) {
+            if (! in_array($status, ['active', 'inactive'])) {
                 $this->error("Invalid status. Use 'active' or 'inactive'.");
+
                 return self::FAILURE;
             }
             $query->where('status', $status);
         }
-        
+
         $publishers = $query->get();
-        
+
         if ($publishers->isEmpty()) {
             $this->info('No publishers found.');
+
             return self::SUCCESS;
         }
-        
+
         $this->table(
             ['ID', 'Name', 'Model', 'Publisher', 'Status', 'Created At'],
-            $publishers->map(fn($p) => [
+            $publishers->map(fn ($p) => [
                 $p->id,
                 $p->name,
                 class_basename($p->model_type),
@@ -60,7 +64,7 @@ class ListPublishersCommand extends Command
                 $p->created_at->format('Y-m-d H:i:s'),
             ])
         );
-        
+
         return self::SUCCESS;
     }
 }

@@ -1,10 +1,21 @@
 <?php
 
+declare(strict_types=1);
+
 namespace ameax\HashChangeDetector\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
+/**
+ * @property int $id
+ * @property string $name
+ * @property string $model_type
+ * @property string $publisher_class
+ * @property string $status
+ * @property \Illuminate\Support\Carbon $created_at
+ * @property \Illuminate\Support\Carbon $updated_at
+ */
 class Publisher extends Model
 {
     protected $fillable = [
@@ -34,12 +45,12 @@ class Publisher extends Model
         return $this->status === 'active';
     }
 
-    public function scopeActive($query)
+    public function scopeActive(\Illuminate\Database\Eloquent\Builder $query): \Illuminate\Database\Eloquent\Builder
     {
         return $query->where('status', 'active');
     }
 
-    public function scopeForModel($query, string $modelType)
+    public function scopeForModel(\Illuminate\Database\Eloquent\Builder $query, string $modelType): \Illuminate\Database\Eloquent\Builder
     {
         return $query->where('model_type', $modelType);
     }

@@ -1,9 +1,11 @@
 <?php
 
+declare(strict_types=1);
+
 use ameax\HashChangeDetector\Jobs\DetectChangesJob;
 use ameax\HashChangeDetector\Jobs\PublishModelJob;
-use ameax\HashChangeDetector\Models\Publisher;
 use ameax\HashChangeDetector\Models\Publish;
+use ameax\HashChangeDetector\Models\Publisher;
 use ameax\HashChangeDetector\Publishers\LogPublisher;
 use ameax\HashChangeDetector\Tests\TestModels\TestModel;
 use Illuminate\Support\Facades\Queue;
@@ -18,11 +20,11 @@ it('creates publisher via command', function () {
         'model' => TestModel::class,
         'publisher' => LogPublisher::class,
     ])
-    ->expectsOutput("Publisher 'API Publisher' created successfully.")
-    ->assertSuccessful();
+        ->expectsOutput("Publisher 'API Publisher' created successfully.")
+        ->assertSuccessful();
 
     $publisher = Publisher::where('name', 'API Publisher')->first();
-    
+
     expect($publisher)->not->toBeNull();
     expect($publisher->model_type)->toBe(TestModel::class);
     expect($publisher->publisher_class)->toBe(LogPublisher::class);
@@ -36,10 +38,10 @@ it('creates inactive publisher via command', function () {
         'publisher' => LogPublisher::class,
         '--inactive' => true,
     ])
-    ->assertSuccessful();
+        ->assertSuccessful();
 
     $publisher = Publisher::where('name', 'Inactive Publisher')->first();
-    
+
     expect($publisher->status)->toBe('inactive');
 });
 
@@ -49,8 +51,8 @@ it('validates model class exists', function () {
         'model' => 'App\Models\NonExistentModel',
         'publisher' => LogPublisher::class,
     ])
-    ->expectsOutput('Model class App\Models\NonExistentModel does not exist.')
-    ->assertFailed();
+        ->expectsOutput('Model class App\Models\NonExistentModel does not exist.')
+        ->assertFailed();
 });
 
 it('lists publishers', function () {
@@ -71,7 +73,7 @@ it('lists publishers', function () {
     $this->artisan('hash-detector:publisher:list')
         ->expectsTable(
             ['ID', 'Name', 'Model', 'Publisher', 'Status', 'Created At'],
-            Publisher::all()->map(fn($p) => [
+            Publisher::all()->map(fn ($p) => [
                 $p->id,
                 $p->name,
                 'TestModel',
@@ -139,8 +141,8 @@ it('activates publisher explicitly', function () {
         'id' => $publisher->id,
         '--activate' => true,
     ])
-    ->expectsOutput("Publisher 'Inactive Publisher' is now active.")
-    ->assertSuccessful();
+        ->expectsOutput("Publisher 'Inactive Publisher' is now active.")
+        ->assertSuccessful();
 
     $publisher->refresh();
     expect($publisher->status)->toBe('active');
@@ -157,7 +159,7 @@ it('dispatches detect changes job', function () {
 
 it('dispatches detect changes job for specific model', function () {
     $this->artisan('hash-detector:detect-changes', ['model' => TestModel::class])
-        ->expectsOutput('Detecting changes for ' . TestModel::class . '...')
+        ->expectsOutput('Detecting changes for '.TestModel::class.'...')
         ->expectsOutput('Change detection job dispatched.')
         ->assertSuccessful();
 
@@ -180,7 +182,7 @@ it('retries deferred publishes', function () {
     ]);
 
     $hash = $model->getCurrentHash();
-    
+
     // Create deferred publish ready for retry
     Publish::create([
         'hash_id' => $hash->id,

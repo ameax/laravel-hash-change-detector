@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace ameax\HashChangeDetector\Commands;
 
 use ameax\HashChangeDetector\Jobs\DetectChangesJob;
@@ -27,17 +29,17 @@ class DetectChangesCommand extends Command
     public function handle(): int
     {
         $modelClass = $this->argument('model');
-        
+
         if ($modelClass) {
             $this->info("Detecting changes for {$modelClass}...");
         } else {
             $this->info('Detecting changes for all hashable models...');
         }
-        
+
         DetectChangesJob::dispatch($modelClass);
-        
+
         $this->info('Change detection job dispatched.');
-        
+
         return self::SUCCESS;
     }
 }

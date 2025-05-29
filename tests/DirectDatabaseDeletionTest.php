@@ -1,8 +1,10 @@
 <?php
 
+declare(strict_types=1);
+
+use ameax\HashChangeDetector\Events\HashableModelDeleted;
 use ameax\HashChangeDetector\Jobs\DetectChangesJob;
 use ameax\HashChangeDetector\Models\Hash;
-use ameax\HashChangeDetector\Events\HashableModelDeleted;
 use ameax\HashChangeDetector\Tests\TestModels\TestModel;
 use ameax\HashChangeDetector\Tests\TestModels\TestRelationModel;
 use Illuminate\Support\Facades\DB;
@@ -39,20 +41,20 @@ it('detects when a related model is deleted directly in database', function () {
     // Parent hash should be updated
     $parent->refresh();
     $updatedParentHash = $parent->getCurrentHash()->composite_hash;
-    
+
     expect($updatedParentHash)->not->toBe($initialParentHash);
-    
+
     // Child hash should be deleted
     $childHash = Hash::where('hashable_type', TestRelationModel::class)
         ->where('hashable_id', $child->id)
         ->first();
-    
+
     expect($childHash)->toBeNull();
 });
 
 it('fires event when a parent model is deleted directly in database', function () {
     Event::fake([HashableModelDeleted::class]);
-    
+
     // Create parent model
     $parent = TestModel::create([
         'name' => 'Parent Model',
@@ -60,7 +62,7 @@ it('fires event when a parent model is deleted directly in database', function (
         'price' => 100.00,
         'active' => true,
     ]);
-    
+
     $parentId = $parent->id;
     $hash = $parent->getCurrentHash();
 
@@ -75,15 +77,15 @@ it('fires event when a parent model is deleted directly in database', function (
 
     // Event should be fired
     Event::assertDispatched(HashableModelDeleted::class, function ($event) use ($parentId) {
-        return $event->modelId === $parentId 
+        return $event->modelId === $parentId
             && $event->modelClass === TestModel::class;
     });
-    
+
     // Hash should be deleted
     $parentHash = Hash::where('hashable_type', TestModel::class)
         ->where('hashable_id', $parentId)
         ->first();
-    
+
     expect($parentHash)->toBeNull();
 });
 
@@ -109,7 +111,7 @@ it('handles cascade deletions correctly', function () {
 
     // Get parent's initial composite hash
     $initialCompositeHash = $parent->getCurrentHash()->composite_hash;
-    
+
     // Run detection for children
     $job = new DetectChangesJob(TestRelationModel::class);
     $job->handle();
@@ -118,17 +120,17 @@ it('handles cascade deletions correctly', function () {
     $remainingChildHashes = Hash::where('hashable_type', TestRelationModel::class)
         ->whereIn('hashable_id', $children->pluck('id'))
         ->count();
-    
+
     expect($remainingChildHashes)->toBe(0);
-    
+
     // Parent should still exist with updated hash
     $parent->refresh();
     $parentHash = $parent->getCurrentHash();
     expect($parentHash)->not->toBeNull();
-    
+
     // Parent's composite hash should have changed
     expect($parentHash->composite_hash)->not->toBe($initialCompositeHash);
-    
+
     // Check that parent has no more related models
     $parent->load('testRelations');
     expect($parent->testRelations)->toHaveCount(0);
@@ -136,7 +138,7 @@ it('handles cascade deletions correctly', function () {
 
 it('cleans up pending publishes when parent model is deleted', function () {
     Event::fake([HashableModelDeleted::class]);
-    
+
     // Create parent model
     $parent = TestModel::create([
         'name' => 'Parent Model',
@@ -144,12 +146,12 @@ it('cleans up pending publishes when parent model is deleted', function () {
         'price' => 100.00,
         'active' => true,
     ]);
-    
+
     $parentId = $parent->id;
-    
+
     // Get parent hash ID
     $hashId = $parent->getCurrentHash()->id;
-    
+
     // Create some pending publishes
     DB::table('publishes')->insert([
         [
@@ -185,6 +187,6 @@ it('cleans up pending publishes when parent model is deleted', function () {
     $remainingPublishes = DB::table('publishes')
         ->where('hash_id', $hashId)
         ->count();
-    
+
     expect($remainingPublishes)->toBe(0);
 });

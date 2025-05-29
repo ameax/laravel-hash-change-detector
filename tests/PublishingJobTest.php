@@ -1,8 +1,10 @@
 <?php
 
+declare(strict_types=1);
+
 use ameax\HashChangeDetector\Jobs\PublishModelJob;
-use ameax\HashChangeDetector\Models\Publisher;
 use ameax\HashChangeDetector\Models\Publish;
+use ameax\HashChangeDetector\Models\Publisher;
 use ameax\HashChangeDetector\Publishers\BasePublisher;
 use ameax\HashChangeDetector\Tests\TestModels\TestModel;
 use Illuminate\Database\Eloquent\Model;
@@ -12,7 +14,9 @@ use Illuminate\Support\Facades\Queue;
 class TestPublisher extends BasePublisher
 {
     public static bool $shouldSucceed = true;
+
     public static bool $shouldPublish = true;
+
     public static array $publishedData = [];
 
     public function publish(Model $model, array $data): bool
@@ -21,7 +25,7 @@ class TestPublisher extends BasePublisher
             'model' => $model,
             'data' => $data,
         ];
-        
+
         return self::$shouldSucceed;
     }
 
@@ -54,7 +58,7 @@ it('publishes model successfully', function () {
     ]);
 
     $hash = $model->getCurrentHash();
-    
+
     $publish = Publish::create([
         'hash_id' => $hash->id,
         'publisher_id' => $publisher->id,
@@ -68,7 +72,7 @@ it('publishes model successfully', function () {
     $job->handle();
 
     $publish->refresh();
-    
+
     expect($publish->status)->toBe('published');
     expect($publish->published_at)->not->toBeNull();
     expect($publish->last_error)->toBeNull();
@@ -78,7 +82,7 @@ it('publishes model successfully', function () {
 
 it('handles publisher failure', function () {
     TestPublisher::$shouldSucceed = false;
-    
+
     $publisher = Publisher::create([
         'name' => 'Test Publisher',
         'model_type' => TestModel::class,
@@ -94,7 +98,7 @@ it('handles publisher failure', function () {
     ]);
 
     $hash = $model->getCurrentHash();
-    
+
     $publish = Publish::create([
         'hash_id' => $hash->id,
         'publisher_id' => $publisher->id,
@@ -108,19 +112,19 @@ it('handles publisher failure', function () {
     $job->handle();
 
     $publish->refresh();
-    
+
     expect($publish->status)->toBe('deferred');
     expect($publish->attempts)->toBe(1);
     expect($publish->last_error)->toBe('Publisher returned false');
     expect($publish->next_try)->not->toBeNull();
-    
+
     // Check that retry job was dispatched
     Queue::assertPushed(PublishModelJob::class);
 });
 
 it('skips publishing when shouldPublish returns false', function () {
     TestPublisher::$shouldPublish = false;
-    
+
     $publisher = Publisher::create([
         'name' => 'Test Publisher',
         'model_type' => TestModel::class,
@@ -136,7 +140,7 @@ it('skips publishing when shouldPublish returns false', function () {
     ]);
 
     $hash = $model->getCurrentHash();
-    
+
     $publish = Publish::create([
         'hash_id' => $hash->id,
         'publisher_id' => $publisher->id,
@@ -150,7 +154,7 @@ it('skips publishing when shouldPublish returns false', function () {
     $job->handle();
 
     $publish->refresh();
-    
+
     expect($publish->status)->toBe('published');
     expect($publish->published_at)->not->toBeNull();
     expect(TestPublisher::$publishedData)->toHaveCount(0); // No actual publishing happened
@@ -158,7 +162,7 @@ it('skips publishing when shouldPublish returns false', function () {
 
 it('marks as failed after max attempts', function () {
     TestPublisher::$shouldSucceed = false;
-    
+
     $publisher = Publisher::create([
         'name' => 'Test Publisher',
         'model_type' => TestModel::class,
@@ -174,7 +178,7 @@ it('marks as failed after max attempts', function () {
     ]);
 
     $hash = $model->getCurrentHash();
-    
+
     $publish = Publish::create([
         'hash_id' => $hash->id,
         'publisher_id' => $publisher->id,
@@ -189,11 +193,11 @@ it('marks as failed after max attempts', function () {
     $job->handle();
 
     $publish->refresh();
-    
+
     expect($publish->status)->toBe('failed');
     expect($publish->attempts)->toBe(3);
     expect($publish->last_error)->toBe('Publisher returned false');
-    
+
     // No retry job should be dispatched
     Queue::assertNotPushed(PublishModelJob::class);
 });
@@ -214,7 +218,7 @@ it('handles missing model gracefully', function () {
     ]);
 
     $hash = $model->getCurrentHash();
-    
+
     $publish = Publish::create([
         'hash_id' => $hash->id,
         'publisher_id' => $publisher->id,
@@ -231,7 +235,7 @@ it('handles missing model gracefully', function () {
     $job->handle();
 
     $publish->refresh();
-    
+
     expect($publish->status)->toBe('deferred');
     expect($publish->last_error)->toContain('Attempt to read property');
 });

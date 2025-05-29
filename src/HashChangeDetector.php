@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace ameax\HashChangeDetector;
 
 use ameax\HashChangeDetector\Models\Publisher;
@@ -8,12 +10,6 @@ class HashChangeDetector
 {
     /**
      * Register a publisher for a model.
-     *
-     * @param string $name
-     * @param string $modelClass
-     * @param string $publisherClass
-     * @param bool $active
-     * @return Publisher
      */
     public function registerPublisher(string $name, string $modelClass, string $publisherClass, bool $active = true): Publisher
     {
@@ -28,10 +24,9 @@ class HashChangeDetector
     /**
      * Get all publishers for a model.
      *
-     * @param string $modelClass
      * @return \Illuminate\Database\Eloquent\Collection
      */
-    public function getPublishersForModel(string $modelClass)
+    public function getPublishersForModel(string $modelClass): \Illuminate\Database\Eloquent\Collection
     {
         return Publisher::forModel($modelClass)->get();
     }
@@ -39,16 +34,15 @@ class HashChangeDetector
     /**
      * Activate a publisher.
      *
-     * @param int|Publisher $publisher
-     * @return bool
+     * @param  int|Publisher  $publisher
      */
-    public function activatePublisher($publisher): bool
+    public function activatePublisher(int|Publisher $publisher): bool
     {
-        if (!$publisher instanceof Publisher) {
+        if (! $publisher instanceof Publisher) {
             $publisher = Publisher::find($publisher);
         }
 
-        if (!$publisher) {
+        if (! $publisher) {
             return false;
         }
 
@@ -58,16 +52,15 @@ class HashChangeDetector
     /**
      * Deactivate a publisher.
      *
-     * @param int|Publisher $publisher
-     * @return bool
+     * @param  int|Publisher  $publisher
      */
-    public function deactivatePublisher($publisher): bool
+    public function deactivatePublisher(int|Publisher $publisher): bool
     {
-        if (!$publisher instanceof Publisher) {
+        if (! $publisher instanceof Publisher) {
             $publisher = Publisher::find($publisher);
         }
 
-        if (!$publisher) {
+        if (! $publisher) {
             return false;
         }
 

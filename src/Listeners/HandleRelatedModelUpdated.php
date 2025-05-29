@@ -1,9 +1,11 @@
 <?php
 
+declare(strict_types=1);
+
 namespace ameax\HashChangeDetector\Listeners;
 
-use ameax\HashChangeDetector\Events\RelatedModelUpdated;
 use ameax\HashChangeDetector\Contracts\Hashable;
+use ameax\HashChangeDetector\Events\RelatedModelUpdated;
 
 class HandleRelatedModelUpdated
 {
@@ -13,7 +15,7 @@ class HandleRelatedModelUpdated
     public function handle(RelatedModelUpdated $event): void
     {
         $updatedModel = $event->model;
-        
+
         // Get parent models from the updated model
         if (method_exists($updatedModel, 'getParentModels')) {
             foreach ($updatedModel->getParentModels() as $parent) {
@@ -22,15 +24,15 @@ class HandleRelatedModelUpdated
                 }
             }
         }
-        
+
         // Also check for models that have this model as a relation
         $this->updateModelsTrackingThisRelation($updatedModel);
     }
-    
+
     /**
      * Find and update models that track this model as a relation.
      */
-    protected function updateModelsTrackingThisRelation($model): void
+    protected function updateModelsTrackingThisRelation(\Illuminate\Database\Eloquent\Model $model): void
     {
         // Get the hash record to find main models
         $hash = $model->getCurrentHash();

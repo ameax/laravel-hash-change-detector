@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace ameax\HashChangeDetector\Publishers;
 
 use ameax\HashChangeDetector\Contracts\Publisher;
@@ -11,7 +13,7 @@ abstract class BasePublisher implements Publisher
      * Determine if the model should be published.
      * By default, all models are published.
      *
-     * @param Model $model The model to check
+     * @param  Model  $model  The model to check
      * @return bool True if should publish, false otherwise
      */
     public function shouldPublish(Model $model): bool
@@ -22,8 +24,6 @@ abstract class BasePublisher implements Publisher
     /**
      * Get the maximum number of retry attempts for this publisher.
      * By default, uses the number of retry intervals configured.
-     *
-     * @return int
      */
     public function getMaxAttempts(): int
     {
@@ -34,7 +34,7 @@ abstract class BasePublisher implements Publisher
      * Prepare the data for publishing.
      * By default, returns the model and its loaded relations as array.
      *
-     * @param Model $model The model to prepare data for
+     * @param  Model  $model  The model to prepare data for
      * @return array The prepared data
      */
     public function getData(Model $model): array

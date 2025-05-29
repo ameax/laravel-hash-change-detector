@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace ameax\HashChangeDetector\Commands;
 
 use ameax\HashChangeDetector\Jobs\PublishModelJob;
@@ -28,20 +30,21 @@ class RetryPublishesCommand extends Command
     public function handle(): int
     {
         $publishes = Publish::pendingOrDeferred()->get();
-        
+
         if ($publishes->isEmpty()) {
             $this->info('No publishes to retry.');
+
             return self::SUCCESS;
         }
-        
+
         $count = 0;
         foreach ($publishes as $publish) {
             PublishModelJob::dispatch($publish);
             $count++;
         }
-        
+
         $this->info("Dispatched {$count} publish jobs.");
-        
+
         return self::SUCCESS;
     }
 }

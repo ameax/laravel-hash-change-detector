@@ -1,11 +1,13 @@
 <?php
 
+declare(strict_types=1);
+
 namespace ameax\HashChangeDetector\Listeners;
 
 use ameax\HashChangeDetector\Events\HashChanged;
 use ameax\HashChangeDetector\Jobs\PublishModelJob;
-use ameax\HashChangeDetector\Models\Publisher;
 use ameax\HashChangeDetector\Models\Publish;
+use ameax\HashChangeDetector\Models\Publisher;
 use Illuminate\Contracts\Queue\ShouldQueue;
 
 class HandleHashChanged implements ShouldQueue
@@ -17,19 +19,19 @@ class HandleHashChanged implements ShouldQueue
     {
         $model = $event->model;
         $modelType = get_class($model);
-        
+
         // Get the hash record
         $hash = $model->getCurrentHash();
-        
-        if (!$hash) {
+
+        if (! $hash) {
             return;
         }
-        
+
         // Find all active publishers for this model type
         $publishers = Publisher::active()
             ->forModel($modelType)
             ->get();
-        
+
         foreach ($publishers as $publisher) {
             // Check if we need to create a new publish record
             $publish = Publish::firstOrCreate([
@@ -40,7 +42,7 @@ class HandleHashChanged implements ShouldQueue
                 'status' => 'pending',
                 'attempts' => 0,
             ]);
-            
+
             // If the hash has changed or it's a new record, dispatch the job
             if ($publish->wasRecentlyCreated || $publish->published_hash !== $event->compositeHash) {
                 $publish->update([
@@ -50,7 +52,7 @@ class HandleHashChanged implements ShouldQueue
                     'last_error' => null,
                     'next_try' => null,
                 ]);
-                
+
                 PublishModelJob::dispatch($publish);
             }
         }

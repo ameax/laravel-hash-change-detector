@@ -1,23 +1,25 @@
 <?php
 
+declare(strict_types=1);
+
 use ameax\HashChangeDetector\Tests\TestModels\TestModel;
 use ameax\HashChangeDetector\Tests\TestModels\TestRelationModel;
 use Illuminate\Support\Str;
 
 it('handles very large attribute values correctly', function () {
     $largeString = Str::random(10000); // 10KB string
-    
+
     $model = TestModel::create([
         'name' => 'Large Value Test',
         'description' => $largeString,
         'price' => 99.99,
         'active' => true,
     ]);
-    
+
     $hash = $model->getCurrentHash();
-    
+
     expect($hash)->not->toBeNull();
-    expect($hash->attribute_hash)->toBe(md5('1|' . $largeString . '|Large Value Test|99.99'));
+    expect($hash->attribute_hash)->toBe(md5('1|'.$largeString.'|Large Value Test|99.99'));
 });
 
 it('handles models with unicode and special characters', function () {
@@ -27,9 +29,9 @@ it('handles models with unicode and special characters', function () {
         'price' => 99.99,
         'active' => true,
     ]);
-    
+
     $hash = $model->getCurrentHash();
-    
+
     expect($hash)->not->toBeNull();
     // Hash should handle unicode correctly
     expect($hash->attribute_hash)->toBe(md5('1|Special chars: <>&"\'|日本語テスト 🚀|99.99'));
@@ -42,7 +44,7 @@ it('handles concurrent hash updates gracefully', function () {
         'price' => 100,
         'active' => true,
     ]);
-    
+
     // Simulate concurrent updates
     $promises = [];
     for ($i = 0; $i < 5; $i++) {
@@ -50,12 +52,12 @@ it('handles concurrent hash updates gracefully', function () {
             $model->update(['price' => 100 + $i]);
         };
     }
-    
+
     // Execute all updates
     foreach ($promises as $promise) {
         $promise();
     }
-    
+
     // Should have final hash without errors
     $model->refresh();
     $hash = $model->getCurrentHash();
@@ -88,7 +90,7 @@ it('handles multiple related models with consistent ordering', function () {
     $parent->load(['testRelations' => function ($query) {
         $query->orderBy('id', 'desc');
     }]);
-    
+
     $hash2 = $parent->calculateCompositeHash();
 
     // Hashes should be identical regardless of load order
@@ -102,9 +104,9 @@ it('handles empty hashable attributes gracefully', function () {
         'price' => 0,
         'active' => false,
     ]);
-    
+
     $hash = $model->getCurrentHash();
-    
+
     expect($hash)->not->toBeNull();
     // Decimals are stored as strings with .00
     expect($hash->attribute_hash)->toBe(md5('0|||0.00'));
@@ -117,10 +119,10 @@ it('handles null model relationships', function () {
         'price' => 100,
         'active' => true,
     ]);
-    
+
     // Model has no relations
     $hash = $model->getCurrentHash();
-    
+
     // When model has relations defined but none exist, composite hash includes empty relation hashes
     // So it won't equal attribute hash
     expect($hash->composite_hash)->not->toBeNull();

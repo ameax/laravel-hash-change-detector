@@ -1,10 +1,11 @@
 <?php
 
+declare(strict_types=1);
+
 use ameax\HashChangeDetector\Jobs\DetectChangesJob;
 use ameax\HashChangeDetector\Models\Hash;
 use ameax\HashChangeDetector\Tests\TestModels\TestModel;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Event;
 
 it('detects changes made directly in database', function () {
     // Create model normally to establish initial hash
@@ -44,7 +45,7 @@ it('detects multiple changes in bulk', function () {
         TestModel::create(['name' => 'Product 3', 'description' => 'Desc 3', 'price' => 30, 'active' => true]),
     ]);
 
-    $originalHashes = $models->map(fn($m) => $m->getCurrentHash()->attribute_hash);
+    $originalHashes = $models->map(fn ($m) => $m->getCurrentHash()->attribute_hash);
 
     // Update all directly in database
     DB::table('test_models')

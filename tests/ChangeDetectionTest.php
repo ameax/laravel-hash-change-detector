@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 use ameax\HashChangeDetector\Events\HashChanged;
 use ameax\HashChangeDetector\Models\Hash;
 use ameax\HashChangeDetector\Tests\TestModels\TestModel;
@@ -154,7 +156,7 @@ it('updates parent composite hash when related model is added', function () {
     // Composite hash should include both model hashes (sorted)
     $hashes = [
         $newHash->attribute_hash,
-        $relation->getCurrentHash()->attribute_hash
+        $relation->getCurrentHash()->attribute_hash,
     ];
     sort($hashes);
     $expectedComposite = md5(implode('|', $hashes));
@@ -179,7 +181,7 @@ it('updates parent composite hash when related model is updated', function () {
     // Force initial composite hash calculation
     $model->load('testRelations');
     $model->updateHash();
-    
+
     $model->refresh();
     $originalComposite = $model->getCurrentHash()->composite_hash;
     Event::fake([HashChanged::class]); // Reset event fake
@@ -218,7 +220,7 @@ it('updates parent composite hash when related model is deleted', function () {
     // Force initial composite hash calculation with all relations
     $model->load('testRelations');
     $model->updateHash();
-    
+
     $model->refresh();
     $originalComposite = $model->getCurrentHash()->composite_hash;
 
@@ -229,15 +231,15 @@ it('updates parent composite hash when related model is deleted', function () {
     $model->refresh(); // Refresh first to clear cached relations
     $model->load('testRelations'); // Force reload relations
     $model->updateHash();
-    
+
     $newHash = $model->getCurrentHash();
 
     expect($newHash->composite_hash)->not->toBe($originalComposite);
-    
+
     // Should only include remaining relation (sorted)
     $hashes = [
         $newHash->attribute_hash,
-        $relation2->getCurrentHash()->attribute_hash
+        $relation2->getCurrentHash()->attribute_hash,
     ];
     sort($hashes);
     $expectedComposite = md5(implode('|', $hashes));
@@ -277,7 +279,7 @@ it('handles multiple related models in composite hash with consistent ordering',
     $model->refresh();
     $model->load('testRelations');
     $model->updateHash();
-    
+
     $hash = $model->getCurrentHash();
 
     // Hashes should be sorted for consistent ordering

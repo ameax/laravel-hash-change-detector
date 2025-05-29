@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace ameax\HashChangeDetector\Commands;
 
 use ameax\HashChangeDetector\Models\Publisher;
@@ -33,29 +35,32 @@ class CreatePublisherCommand extends Command
         $name = $this->argument('name');
         $modelClass = $this->argument('model');
         $publisherClass = $this->argument('publisher');
-        
+
         // Validate model class exists
-        if (!class_exists($modelClass)) {
+        if (! class_exists($modelClass)) {
             $this->error("Model class {$modelClass} does not exist.");
+
             return self::FAILURE;
         }
-        
+
         // Validate publisher class exists
-        if (!class_exists($publisherClass)) {
+        if (! class_exists($publisherClass)) {
             $this->error("Publisher class {$publisherClass} does not exist.");
+
             return self::FAILURE;
         }
-        
+
         // Check if publisher already exists
         $exists = Publisher::where('name', $name)
             ->where('model_type', $modelClass)
             ->exists();
-            
+
         if ($exists) {
             $this->error("Publisher '{$name}' for model {$modelClass} already exists.");
+
             return self::FAILURE;
         }
-        
+
         // Create the publisher
         $publisher = Publisher::create([
             'name' => $name,
@@ -63,13 +68,13 @@ class CreatePublisherCommand extends Command
             'publisher_class' => $publisherClass,
             'status' => $this->option('inactive') ? 'inactive' : 'active',
         ]);
-        
+
         $this->info("Publisher '{$name}' created successfully.");
         $this->table(
             ['ID', 'Name', 'Model', 'Publisher', 'Status'],
             [[$publisher->id, $publisher->name, $publisher->model_type, $publisher->publisher_class, $publisher->status]]
         );
-        
+
         return self::SUCCESS;
     }
 }

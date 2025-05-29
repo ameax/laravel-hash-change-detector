@@ -6,11 +6,10 @@ namespace ameax\HashChangeDetector\Events;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Foundation\Events\Dispatchable;
-use Illuminate\Queue\SerializesModels;
 
-class HashChanged
+class HashUpdatedWithoutPublishing
 {
-    use Dispatchable, SerializesModels;
+    use Dispatchable;
 
     /**
      * Create a new event instance.

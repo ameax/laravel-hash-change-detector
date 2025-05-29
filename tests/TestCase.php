@@ -1,10 +1,12 @@
 <?php
 
+declare(strict_types=1);
+
 namespace ameax\HashChangeDetector\Tests;
 
+use ameax\HashChangeDetector\HashChangeDetectorServiceProvider;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Orchestra\Testbench\TestCase as Orchestra;
-use ameax\HashChangeDetector\HashChangeDetectorServiceProvider;
 
 class TestCase extends Orchestra
 {
@@ -31,7 +33,7 @@ class TestCase extends Orchestra
 
     protected function defineDatabaseMigrations()
     {
-        $this->loadMigrationsFrom(__DIR__ . '/../database/migrations');
-        $this->loadMigrationsFrom(__DIR__ . '/database/migrations');
+        $this->loadMigrationsFrom(__DIR__.'/../database/migrations');
+        $this->loadMigrationsFrom(__DIR__.'/database/migrations');
     }
 }

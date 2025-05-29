@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace ameax\HashChangeDetector\Events;
 
 use ameax\HashChangeDetector\Models\Hash;

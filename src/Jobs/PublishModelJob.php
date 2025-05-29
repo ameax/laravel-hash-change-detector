@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace ameax\HashChangeDetector\Jobs;
 
 use ameax\HashChangeDetector\Models\Publish;
@@ -37,31 +39,32 @@ class PublishModelJob implements ShouldQueue
     {
         // Mark as dispatched
         $this->publish->markAsDispatched();
-        
+
         try {
             // Get the publisher instance
             $publisher = $this->publish->publisher;
             $publisherInstance = $publisher->getPublisherInstance();
-            
+
             // Get the model through the hash relationship
             $model = $this->publish->hash->hashable;
-            
-            if (!$model) {
-                throw new Exception('Model not found for hash ID: ' . $this->publish->hash_id);
+
+            if (! $model) {
+                throw new Exception('Model not found for hash ID: '.$this->publish->hash_id);
             }
-            
+
             // Check if we should publish
-            if (!$publisherInstance->shouldPublish($model)) {
+            if (! $publisherInstance->shouldPublish($model)) {
                 $this->publish->markAsPublished();
+
                 return;
             }
-            
+
             // Prepare the data
             $data = $publisherInstance->getData($model);
-            
+
             // Publish the data
             $success = $publisherInstance->publish($model, $data);
-            
+
             if ($success) {
                 $this->publish->markAsPublished();
             } else {
@@ -78,7 +81,7 @@ class PublishModelJob implements ShouldQueue
     protected function handleFailure(Exception $e): void
     {
         $error = $e->getMessage() ?: 'Unknown error';
-        
+
         // Check if we should retry
         $maxAttempts = 3; // Default from config retry intervals
         try {
@@ -89,10 +92,10 @@ class PublishModelJob implements ShouldQueue
         } catch (\Exception $instanceError) {
             // If we can't create the publisher instance, use default max attempts
         }
-        
+
         if ($this->publish->attempts < $maxAttempts) {
             $this->publish->markAsDeferred($error);
-            
+
             // Schedule retry if it's the first attempt (30 seconds)
             if ($this->publish->attempts === 1 && $this->publish->next_try) {
                 $delay = $this->publish->next_try->diffInSeconds(now());

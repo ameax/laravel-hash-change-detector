@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace ameax\HashChangeDetector\Contracts;
 
 interface Hashable
@@ -28,15 +30,11 @@ interface Hashable
 
     /**
      * Calculate the attribute hash for this model.
-     *
-     * @return string
      */
     public function calculateAttributeHash(): string;
 
     /**
      * Calculate the composite hash including related models.
-     *
-     * @return string
      */
     public function calculateCompositeHash(): string;
 }

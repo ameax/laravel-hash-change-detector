@@ -1,9 +1,11 @@
 <?php
 
+declare(strict_types=1);
+
 use ameax\HashChangeDetector\Events\HashChanged;
 use ameax\HashChangeDetector\Jobs\PublishModelJob;
-use ameax\HashChangeDetector\Models\Publisher;
 use ameax\HashChangeDetector\Models\Publish;
+use ameax\HashChangeDetector\Models\Publisher;
 use ameax\HashChangeDetector\Publishers\LogPublisher;
 use ameax\HashChangeDetector\Tests\TestModels\TestModel;
 use Illuminate\Support\Facades\Event;
@@ -75,7 +77,7 @@ it('filters publishers by model type', function () {
 
 it('creates publish records when hash changes', function () {
     Event::fake([HashChanged::class]);
-    
+
     $publisher = Publisher::create([
         'name' => 'Test Publisher',
         'model_type' => TestModel::class,
@@ -94,7 +96,7 @@ it('creates publish records when hash changes', function () {
     Event::assertDispatched(HashChanged::class, function ($event) use ($model, $publisher) {
         // Simulate what the listener would do
         $hash = $model->getCurrentHash();
-        
+
         Publish::create([
             'hash_id' => $hash->id,
             'publisher_id' => $publisher->id,
@@ -102,7 +104,7 @@ it('creates publish records when hash changes', function () {
             'status' => 'pending',
             'attempts' => 0,
         ]);
-        
+
         return true;
     });
 
@@ -128,7 +130,7 @@ it('dispatches job for pending publishes', function () {
     ]);
 
     $hash = $model->getCurrentHash();
-    
+
     $publish = Publish::create([
         'hash_id' => $hash->id,
         'publisher_id' => $publisher->id,
@@ -158,7 +160,7 @@ it('handles publish retry logic', function () {
     ]);
 
     $hash = $model->getCurrentHash();
-    
+
     $publish = Publish::create([
         'hash_id' => $hash->id,
         'publisher_id' => $publisher->id,
@@ -169,7 +171,7 @@ it('handles publish retry logic', function () {
 
     // Simulate first failure
     $publish->markAsDeferred('Connection timeout');
-    
+
     expect($publish->status)->toBe('deferred');
     expect($publish->attempts)->toBe(1);
     expect($publish->last_error)->toBe('Connection timeout');
@@ -178,19 +180,19 @@ it('handles publish retry logic', function () {
 
     // Simulate second failure
     $publish->markAsDeferred('Server error');
-    
+
     expect($publish->attempts)->toBe(2);
     expect($publish->next_try->timestamp)->toBeGreaterThan(now()->timestamp);
 
     // Simulate third failure
     $publish->markAsDeferred('Network error');
-    
+
     expect($publish->attempts)->toBe(3);
     expect($publish->next_try->timestamp)->toBeGreaterThan(now()->timestamp);
 
     // Fourth failure should mark as failed
     $publish->markAsDeferred('Final error');
-    
+
     expect($publish->status)->toBe('failed');
     expect($publish->attempts)->toBe(4); // Attempt was incremented before checking max
     expect($publish->last_error)->toBe('Final error');
@@ -226,7 +228,7 @@ it('identifies publishes ready for retry', function () {
     ]);
 
     $hash = $model->getCurrentHash();
-    
+
     // Create pending publish
     $pendingPublish = Publish::create([
         'hash_id' => $hash->id,
@@ -266,8 +268,8 @@ it('identifies publishes ready for retry', function () {
 
 it('executes log publisher successfully', function () {
     Log::spy();
-    
-    $publisher = new LogPublisher();
+
+    $publisher = new LogPublisher;
     $model = TestModel::create([
         'name' => 'Test Product',
         'description' => 'Test Description',

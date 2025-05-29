@@ -1,20 +1,23 @@
 <?php
 
+declare(strict_types=1);
+
 namespace ameax\HashChangeDetector;
 
-use Spatie\LaravelPackageTools\Package;
-use Spatie\LaravelPackageTools\PackageServiceProvider;
-use ameax\HashChangeDetector\Commands\HashChangeDetectorCommand;
-use ameax\HashChangeDetector\Commands\DetectChangesCommand;
-use ameax\HashChangeDetector\Commands\RetryPublishesCommand;
 use ameax\HashChangeDetector\Commands\CreatePublisherCommand;
+use ameax\HashChangeDetector\Commands\DetectChangesCommand;
+use ameax\HashChangeDetector\Commands\HashChangeDetectorCommand;
+use ameax\HashChangeDetector\Commands\InitializeHashesCommand;
 use ameax\HashChangeDetector\Commands\ListPublishersCommand;
+use ameax\HashChangeDetector\Commands\RetryPublishesCommand;
 use ameax\HashChangeDetector\Commands\TogglePublisherCommand;
 use ameax\HashChangeDetector\Events\HashChanged;
 use ameax\HashChangeDetector\Events\RelatedModelUpdated;
 use ameax\HashChangeDetector\Listeners\HandleHashChanged;
 use ameax\HashChangeDetector\Listeners\HandleRelatedModelUpdated;
 use Illuminate\Support\Facades\Event;
+use Spatie\LaravelPackageTools\Package;
+use Spatie\LaravelPackageTools\PackageServiceProvider;
 
 class HashChangeDetectorServiceProvider extends PackageServiceProvider
 {
@@ -37,6 +40,7 @@ class HashChangeDetectorServiceProvider extends PackageServiceProvider
                 CreatePublisherCommand::class,
                 ListPublishersCommand::class,
                 TogglePublisherCommand::class,
+                InitializeHashesCommand::class,
             ]);
     }
 

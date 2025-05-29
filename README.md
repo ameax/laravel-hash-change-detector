@@ -7,6 +7,13 @@
 
 Detect changes in your Laravel models through hash-based tracking and automatically publish updates to external systems. Perfect for maintaining data synchronization across multiple platforms, APIs, or services.
 
+**Key Features:**
+- 🔄 **Two-way sync** for regular Eloquent models (Laravel + external changes)
+- 👁️ **One-way tracking** for read-only models (database views, external tables)
+- 🔍 **Direct database detection** for changes made outside Laravel
+- 📤 **Automatic publishing** to external systems when changes are detected
+- 🔗 **Relationship tracking** with parent-child hash propagation
+
 ## Table of Contents
 
 - [Installation](#installation)
@@ -14,6 +21,7 @@ Detect changes in your Laravel models through hash-based tracking and automatica
 - [Basic Usage](#basic-usage)
   - [Making a Model Hashable](#making-a-model-hashable)
   - [Tracking Related Models](#tracking-related-models)
+- [Model Types and Detection Strategies](#model-types-and-detection-strategies)
 - [Direct Database Detection](#direct-database-detection)
 - [Publishing System](#publishing-system)
 - [Advanced Usage](#advanced-usage)
@@ -160,9 +168,92 @@ class OrderItem extends Model implements Hashable
 3. **Automatic Updates**: When a child changes, it notifies its parents to recalculate their composite hashes
 4. **Event Driven**: All updates trigger events that you can listen to
 
+## Model Types and Detection Strategies
+
+The package supports two types of models, each with different use cases:
+
+### 1. Regular Models (Two-Way Sync)
+
+Standard Eloquent models that can be modified both through Laravel AND external systems:
+
+```php
+class Product extends Model implements Hashable
+{
+    use InteractsWithHashes;
+    
+    protected $fillable = ['name', 'price', 'sku', 'stock'];
+    
+    public function getHashableAttributes(): array
+    {
+        return ['name', 'price', 'sku', 'stock'];
+    }
+}
+```
+
+**When to use:**
+- Models primarily managed through Laravel but occasionally updated externally
+- E-commerce products (admin panel + inventory systems)
+- User profiles (app + customer service tools)
+- Orders (website + imports from other systems)
+
+**Features:**
+- ✅ Full Eloquent functionality (create, update, delete)
+- ✅ Automatic hash updates via model events
+- ✅ Direct database detection for external changes
+- ✅ Can track relationships
+
+### 2. Read-Only Models (One-Way Sync)
+
+Models that are NEVER modified through Laravel, only tracked for external changes:
+
+```php
+class SalesReport extends Model implements Hashable
+{
+    use TracksHashesOnly; // Note: Different trait!
+    
+    protected $table = 'sales_summary_view'; // Often a database view
+    
+    public function getHashableAttributes(): array
+    {
+        return ['report_date', 'total_sales', 'order_count'];
+    }
+    
+    // Prevent accidental modifications
+    public function save(array $options = [])
+    {
+        throw new \RuntimeException('This is a read-only model');
+    }
+}
+```
+
+**When to use:**
+- Database views
+- External system tables (shared databases)
+- Analytics/reporting tables (populated by ETL)
+- Legacy tables you shouldn't modify
+- Tables updated by database triggers/procedures
+
+**Features:**
+- ✅ Read operations via Eloquent
+- ❌ No write operations (blocked)
+- ❌ No model event overhead
+- ✅ Direct database detection only
+- ✅ Better performance for large datasets
+
+### Choosing the Right Approach
+
+| Scenario | Model Type | Why |
+|----------|------------|-----|
+| Products with admin panel | Regular + Detection | Need Eloquent updates + external sync |
+| Database view of sales | Read-Only + Detection | Can't update views via Eloquent |
+| User accounts | Regular + Detection | App updates + admin tools |
+| External inventory table | Read-Only + Detection | Managed by warehouse system |
+| Orders with API imports | Regular + Detection | Create via app + import via API |
+| Analytics aggregates | Read-Only + Detection | Updated by SQL procedures |
+
 ## Direct Database Detection
 
-The package can detect changes made outside of Laravel (direct SQL updates, external scripts, etc.).
+Direct database detection finds changes made outside of Laravel (SQL updates, triggers, external apps, etc.).
 
 ### Setting Up Detection
 
@@ -264,6 +355,49 @@ $schedule->command('hash-detector:retry-publishes')
 
 ## Advanced Usage
 
+### Working with Read-Only Models
+
+For read-only models (see [Model Types](#model-types-and-detection-strategies) above), you need to initialize hashes since there are no Eloquent events:
+
+```bash
+# Initialize hashes for existing records
+php artisan hash-detector:initialize-hashes "App\Models\SalesReport"
+
+# Process in chunks for large tables
+php artisan hash-detector:initialize-hashes "App\Models\SalesReport" --chunk=1000
+```
+
+Then use normal detection:
+
+```php
+$schedule->command('hash-detector:detect-changes', ['model' => SalesReport::class])
+    ->hourly(); // Can use different frequency than regular models
+```
+
+### Mixed Model Environment
+
+You can use both model types in the same application:
+
+```php
+// app/Console/Kernel.php
+protected function schedule(Schedule $schedule)
+{
+    // Regular models - frequent checks
+    $schedule->command('hash-detector:detect-changes', ['model' => Product::class])
+        ->everyFiveMinutes();
+        
+    $schedule->command('hash-detector:detect-changes', ['model' => Order::class])
+        ->everyFiveMinutes();
+    
+    // Read-only models - less frequent checks
+    $schedule->command('hash-detector:detect-changes', ['model' => WarehouseInventory::class])
+        ->everyThirtyMinutes();
+        
+    $schedule->command('hash-detector:detect-changes', ['model' => SalesAnalytics::class])
+        ->hourly();
+}
+```
+
 ### Nested Relations
 
 Track nested relationships using dot notation:
@@ -301,6 +435,53 @@ In your config file:
 'hash_algorithm' => 'sha256', // Default is 'md5'
 ```
 
+### Syncing from External APIs
+
+When receiving data from external APIs, you can update models without triggering publishers:
+
+```php
+use ameax\HashChangeDetector\Traits\SyncsFromExternalSources;
+
+class Product extends Model implements Hashable
+{
+    use InteractsWithHashes, SyncsFromExternalSources;
+    
+    // ... your model configuration
+}
+
+// Sync single model from API without triggering publishers
+$product->syncFromExternal([
+    'name' => 'Updated from API',
+    'price' => 99.99,
+    'stock' => 50
+], 'external-api'); // Mark 'external-api' publisher as synced
+
+// Create or update from API
+$product = Product::syncOrCreateFromExternal(
+    ['sku' => 'WIDGET-001'], // Find by SKU
+    [
+        'name' => 'Widget',
+        'price' => 49.99,
+        'stock' => 100
+    ],
+    'external-api' // Optional: specific publisher to mark as synced
+);
+
+// Bulk sync from API
+$products = Product::bulkSyncFromExternal($apiData, 'sku', 'external-api');
+
+// Manual approach without trait
+$product->fill($apiData);
+$product->saveQuietly(); // Laravel's quiet save
+$product->updateHashWithoutPublishing(['external-api', 'another-api']);
+```
+
+**Key Features:**
+- Updates hash to reflect current state
+- Marks specified publishers as "synced" without triggering them
+- Prevents infinite sync loops between systems
+- Fires `HashUpdatedWithoutPublishing` event instead of `HashChanged`
+
 ### Handling Deletions
 
 Listen for deletion events:
@@ -329,6 +510,10 @@ php artisan hash-detector:detect-changes
 
 # Detect changes in specific model
 php artisan hash-detector:detect-changes "App\Models\Order"
+
+# Initialize hashes for read-only models
+php artisan hash-detector:initialize-hashes "App\Models\ReportSummary"
+php artisan hash-detector:initialize-hashes "App\Models\ReportSummary" --chunk=1000
 
 # Retry failed publishes
 php artisan hash-detector:retry-publishes

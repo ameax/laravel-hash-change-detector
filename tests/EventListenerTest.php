@@ -1,12 +1,14 @@
 <?php
 
+declare(strict_types=1);
+
 use ameax\HashChangeDetector\Events\HashChanged;
-use ameax\HashChangeDetector\Listeners\HandleHashChanged;
-use ameax\HashChangeDetector\Models\Publisher;
-use ameax\HashChangeDetector\Models\Publish;
 use ameax\HashChangeDetector\Jobs\PublishModelJob;
-use ameax\HashChangeDetector\Tests\TestModels\TestModel;
+use ameax\HashChangeDetector\Listeners\HandleHashChanged;
+use ameax\HashChangeDetector\Models\Publish;
+use ameax\HashChangeDetector\Models\Publisher;
 use ameax\HashChangeDetector\Publishers\LogPublisher;
+use ameax\HashChangeDetector\Tests\TestModels\TestModel;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Queue;
 
@@ -39,12 +41,12 @@ it('creates publish records when hash changes', function () {
     );
 
     // Handle event
-    $listener = new HandleHashChanged();
+    $listener = new HandleHashChanged;
     $listener->handle($event);
 
     // Check publish record was created
     $publishes = Publish::where('hash_id', $hash->id)->get();
-    
+
     expect($publishes)->toHaveCount(1);
     expect($publishes->first()->publisher_id)->toBe($publisher->id);
     expect($publishes->first()->status)->toBe('pending');
@@ -88,12 +90,12 @@ it('dispatches jobs for each active publisher', function () {
         $hash->composite_hash
     );
 
-    $listener = new HandleHashChanged();
+    $listener = new HandleHashChanged;
     $listener->handle($event);
 
     // Check only active publishers got jobs
     Queue::assertPushed(PublishModelJob::class, 2);
-    
+
     $publishes = Publish::all();
     expect($publishes)->toHaveCount(2);
     expect($publishes->pluck('publisher_id')->sort()->values())->toEqual(collect([$publisher1->id, $publisher2->id])->sort()->values());
@@ -116,12 +118,12 @@ it('handles event with no publishers gracefully', function () {
         $hash->composite_hash
     );
 
-    $listener = new HandleHashChanged();
+    $listener = new HandleHashChanged;
     $listener->handle($event);
 
     // No jobs should be dispatched
     Queue::assertNotPushed(PublishModelJob::class);
-    
+
     expect(Publish::count())->toBe(0);
 });
 
@@ -151,12 +153,12 @@ it('respects queue configuration for jobs', function () {
         $hash->composite_hash
     );
 
-    $listener = new HandleHashChanged();
+    $listener = new HandleHashChanged;
     $listener->handle($event);
 
     // Check job was dispatched
     Queue::assertPushed(PublishModelJob::class);
-    
+
     // Reset config
     config(['hash-change-detector.queue' => null]);
 });

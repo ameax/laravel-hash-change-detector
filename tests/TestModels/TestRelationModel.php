@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace ameax\HashChangeDetector\Tests\TestModels;
 
 use ameax\HashChangeDetector\Contracts\Hashable;
@@ -43,11 +45,11 @@ class TestRelationModel extends Model implements Hashable
     public function getParentModels(): \Illuminate\Support\Collection
     {
         $parents = collect();
-        
+
         if ($this->testModel) {
             $parents->push($this->testModel);
         }
-        
+
         return $parents;
     }
 }
