@@ -25,30 +25,79 @@ We highly appreciate you sending us a postcard from your hometown, mentioning wh
 
 ## How It Works
 
-### Change Detection
+### System Architecture
 
-The package tracks changes in your Eloquent models by generating MD5 hashes of specified attributes. It supports two types of hashes:
+The package consists of three main components working together:
 
-1. **Attribute Hash**: MD5 hash of the model's trackable attributes
-2. **Composite Hash**: MD5 hash combining the main model's hash with all related models' hashes
+1. **Hash Tracking System**: Monitors changes in models and their relationships
+2. **Change Detection Engine**: Identifies modifications through PHP events or MySQL queries
+3. **Publishing Pipeline**: Distributes changes to external systems with retry logic
 
-When any tracked attribute changes, or when related models are added/modified/deleted, a new composite hash is generated, triggering the publishing process.
+### Change Detection Lifecycle
 
-### Hash Calculation Methods
+#### 1. Model Events (Real-time Detection)
 
-1. **PHP-based (via Model Events)**: Automatically calculates hashes when models are created, updated, or deleted through Laravel
-2. **MySQL-based (via Direct Queries)**: Efficiently detects changes in bulk for models updated outside of Laravel using SQL functions
+When a model is created, updated, or deleted through Laravel:
 
-### Publishing System
+```
+Model Change → Boot Trait Hook → Calculate Hash → Compare with Stored Hash
+     ↓                                                      ↓
+Update Parent Hashes ← Fire HashChanged Event ← Hash Different
+     ↓                                    ↓
+Update Composite Hash          Create/Update Publish Records
+                                         ↓
+                              Dispatch PublishModelJob → External System
+```
 
-When changes are detected, the package:
-1. Creates publish records with status `pending`
-2. Dispatches them to your configured publisher classes
-3. Implements smart retry logic:
-   - First retry: after 30 seconds
-   - Second retry: after 5 minutes  
-   - Third retry: after 6 hours
-   - Final status: `failed`
+#### 2. MySQL Detection (Bulk Detection)
+
+For models updated outside Laravel (e.g., direct database updates, external scripts):
+
+```
+Scheduled Command → DetectChangesJob → SQL Query for All Records
+                                              ↓
+                                    Calculate Hash in Database
+                                              ↓
+                                    Compare with Stored Hashes
+                                              ↓
+                                    Update Changed Records → Trigger Publishing
+```
+
+### Hash Calculation Details
+
+#### Attribute Hash Format
+Attributes are sorted alphabetically and concatenated with pipe separators:
+```
+MD5(active|description|name|price)
+```
+
+Example:
+- Model: `['name' => 'Product', 'price' => 99.99, 'active' => true, 'description' => null]`
+- Sorted: `['active' => true, 'description' => null, 'name' => 'Product', 'price' => 99.99]`
+- String: `"1||Product|99.99"` (booleans become '1'/'0', nulls become '')
+- Hash: `MD5("1||Product|99.99")`
+
+#### Composite Hash Format
+All related model hashes are collected, sorted, and concatenated:
+```
+MD5(main_hash|related_hash_1|related_hash_2|...)
+```
+
+### Publishing Workflow
+
+1. **Change Detection**: Hash mismatch triggers `HashChanged` event
+2. **Event Handling**: `HandleHashChanged` listener creates publish records
+3. **Job Dispatch**: `PublishModelJob` sent to queue
+4. **Retry Logic**: Failed attempts follow exponential backoff
+5. **Status Tracking**: Each attempt updates the `publishes` table
+
+### Database Schema
+
+The package uses three main tables:
+
+- **`hashes`**: Stores attribute and composite hashes for all tracked models
+- **`publishers`**: Defines available publishers for each model type
+- **`publishes`**: Tracks publishing attempts and their status
 
 ## Installation
 
@@ -72,6 +121,27 @@ php artisan vendor:publish --tag="laravel-hash-change-detector-config"
 ```
 
 ## Usage
+
+### Relation Tracking
+
+The package automatically tracks changes in related models:
+
+1. **Parent Update Mechanism**: When a related model changes, its parent model's composite hash is automatically updated
+2. **Nested Relations**: Supports dot notation for deep relation tracking (e.g., `posts.comments`)
+3. **Bidirectional Updates**: Changes flow from child to parent models
+
+Example flow:
+```
+Order (parent) has many OrderItems (children)
+  ↓
+OrderItem price changes
+  ↓
+OrderItem hash updates → Triggers updateParentHashes()
+  ↓
+Order's composite hash recalculates including all OrderItems
+  ↓
+Publishing triggered for Order with new data
+```
 
 ### Making a Model Hashable
 
@@ -152,6 +222,40 @@ HashChangeDetector::registerPublisher(
 php artisan laravel-hash-change-detector:publisher:create "Product API" Product ProductApiPublisher
 ```
 
+### Available Commands
+
+The package provides several Artisan commands:
+
+```bash
+# Detect changes for all or specific models
+php artisan hash-detector:detect-changes [model-class]
+
+# Retry deferred publishes
+php artisan hash-detector:retry-publishes
+
+# Manage publishers
+php artisan hash-detector:publisher:create "Name" "Model\Class" "Publisher\Class"
+php artisan hash-detector:publisher:list [--model=Model\Class] [--status=active]
+php artisan hash-detector:publisher:toggle {id} [--activate] [--deactivate]
+```
+
+### Scheduling
+
+Add these to your `app/Console/Kernel.php` for automatic processing:
+
+```php
+protected function schedule(Schedule $schedule)
+{
+    // Detect changes in models updated outside Laravel
+    $schedule->command('hash-detector:detect-changes')
+        ->everyFiveMinutes();
+    
+    // Retry deferred publishes
+    $schedule->command('hash-detector:retry-publishes')
+        ->everyFiveMinutes();
+}
+```
+
 ### Detecting Changes via MySQL
 
 For models updated outside Laravel, use the bulk change detector:
@@ -169,9 +273,77 @@ DetectChangesJob::dispatch();
 
 ## Testing
 
+The package includes comprehensive test coverage using Pest PHP. Run tests with:
+
 ```bash
 composer test
 ```
+
+### Test Models
+
+The test suite includes example models that demonstrate best practices:
+
+#### TestModel (Parent)
+```php
+class TestModel extends Model implements Hashable
+{
+    use InteractsWithHashes;
+    
+    public function getHashableAttributes(): array
+    {
+        return ['name', 'description', 'price', 'active'];
+    }
+    
+    public function getHashableRelations(): array
+    {
+        return ['testRelations'];
+    }
+}
+```
+
+#### TestRelationModel (Child)
+```php
+class TestRelationModel extends Model implements Hashable
+{
+    use InteractsWithHashes;
+    
+    protected function updateParentHashes(): void
+    {
+        if ($this->testModel) {
+            $this->testModel->load('testRelations');
+            $this->testModel->updateHash();
+        }
+    }
+}
+```
+
+### Test Coverage
+
+The test suite covers:
+
+1. **Change Detection Tests** (`tests/ChangeDetectionTest.php`)
+   - Hash creation on model creation
+   - Hash updates on attribute changes
+   - Null value handling
+   - Boolean value conversions
+   - Parent composite hash updates
+   - Related model tracking
+   - Consistent hash ordering
+
+2. **MySQL Detection Tests** (`tests/MySQLChangeDetectionTest.php`)
+   - Direct database change detection
+   - Bulk change processing
+   - SQLite compatibility for testing
+   - Hash calculation consistency between PHP and SQL
+
+### Key Testing Insights
+
+1. **Attribute Ordering**: Attributes are always sorted alphabetically for consistent hashing
+2. **Type Handling**: 
+   - Booleans: `true` → `'1'`, `false` → `'0'`
+   - Nulls: `null` → `''` (empty string)
+   - Decimals: Preserved with precision (e.g., `99.99`)
+3. **Parent Updates**: Child models must explicitly call `updateParentHashes()` to propagate changes
 
 ## Changelog
 
