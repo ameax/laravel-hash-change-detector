@@ -34,6 +34,11 @@ class HandleRelatedModelUpdated
      */
     protected function updateModelsTrackingThisRelation(\Illuminate\Database\Eloquent\Model $model): void
     {
+        // Check if model has the getCurrentHash method (from InteractsWithHashes trait)
+        if (! method_exists($model, 'getCurrentHash')) {
+            return;
+        }
+        
         // Get the hash record to find main models
         $hash = $model->getCurrentHash();
         if ($hash && $hash->main_model_type && $hash->main_model_id) {
