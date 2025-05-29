@@ -4,6 +4,7 @@ namespace ameax\HashChangeDetector\Traits;
 
 use ameax\HashChangeDetector\Models\Hash;
 use ameax\HashChangeDetector\Events\HashChanged;
+use ameax\HashChangeDetector\Events\RelatedModelUpdated;
 use Illuminate\Database\Eloquent\Relations\MorphOne;
 use Illuminate\Support\Collection;
 
@@ -16,17 +17,21 @@ trait InteractsWithHashes
     {
         static::created(function ($model) {
             $model->updateHash();
-            $model->updateParentHashes();
+            event(new RelatedModelUpdated($model, 'created'));
         });
 
         static::updated(function ($model) {
             $model->updateHash();
-            $model->updateParentHashes();
+            event(new RelatedModelUpdated($model, 'updated'));
         });
 
+        static::deleting(function ($model) {
+            // Fire event before deletion so parent models can be found
+            event(new RelatedModelUpdated($model, 'deleting'));
+        });
+        
         static::deleted(function ($model) {
             $model->deleteHash();
-            $model->updateParentHashes();
         });
     }
 
@@ -75,6 +80,11 @@ trait InteractsWithHashes
      */
     public function calculateCompositeHash(): string
     {
+        // Reload hashable relations to ensure we have fresh data
+        if (!empty($this->getHashableRelations())) {
+            $this->load($this->getHashableRelations());
+        }
+        
         $hashes = collect([$this->calculateAttributeHash()]);
         
         foreach ($this->getHashableRelations() as $relation) {
@@ -108,9 +118,6 @@ trait InteractsWithHashes
             
             // Fire event for hash change
             event(new HashChanged($this, $attributeHash, $compositeHash));
-            
-            // Update parent model's composite hash if this is a related model
-            $this->updateParentHashes();
         }
     }
 
@@ -120,7 +127,35 @@ trait InteractsWithHashes
     public function deleteHash(): void
     {
         $this->hash()->delete();
-        $this->updateParentHashes();
+    }
+
+    /**
+     * Check if a related model belongs to this model.
+     */
+    public function hasRelatedModel(Model $model): bool
+    {
+        foreach ($this->getHashableRelations() as $relationName) {
+            // Handle nested relations
+            if (str_contains($relationName, '.')) {
+                continue; // Skip nested for now
+            }
+            
+            $relation = $this->$relationName();
+            
+            // Check if the model belongs to this relation
+            if ($relation instanceof \Illuminate\Database\Eloquent\Relations\HasMany ||
+                $relation instanceof \Illuminate\Database\Eloquent\Relations\HasOne) {
+                if ($model->getAttribute($relation->getForeignKeyName()) == $this->getKey()) {
+                    return true;
+                }
+            } elseif ($relation instanceof \Illuminate\Database\Eloquent\Relations\BelongsToMany) {
+                if ($relation->getRelated()::class === get_class($model)) {
+                    return $relation->where($relation->getRelatedKeyName(), $model->getKey())->exists();
+                }
+            }
+        }
+        
+        return false;
     }
 
     /**
@@ -198,34 +233,24 @@ trait InteractsWithHashes
     }
 
     /**
-     * Update parent model hashes when this model changes.
-     */
-    protected function updateParentHashes(): void
-    {
-        // This method should be overridden in models that have parent relationships
-        // Default implementation checks for common parent relation names
-        $parentMethods = ['parent', 'owner', 'user'];
-        
-        foreach ($parentMethods as $method) {
-            if (method_exists($this, $method)) {
-                $parent = $this->$method;
-                if ($parent && method_exists($parent, 'updateHash')) {
-                    $parent->updateHash();
-                }
-            }
-        }
-    }
-
-    /**
      * Generate hash using configured algorithm.
      */
     protected function generateHash(string $content): string
     {
-        $algorithm = config('laravel-hash-change-detector.hash_algorithm', 'md5');
+        $algorithm = config('hash-change-detector.hash_algorithm', 'md5');
         
         return match ($algorithm) {
             'sha256' => hash('sha256', $content),
             default => md5($content),
         };
+    }
+    
+    /**
+     * Get parent models that should be notified of changes.
+     * Override this method in your model to specify parent relationships.
+     */
+    public function getParentModels(): Collection
+    {
+        return collect();
     }
 }

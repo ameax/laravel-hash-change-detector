@@ -30,7 +30,7 @@ We highly appreciate you sending us a postcard from your hometown, mentioning wh
 The package consists of three main components working together:
 
 1. **Hash Tracking System**: Monitors changes in models and their relationships
-2. **Change Detection Engine**: Identifies modifications through PHP events or MySQL queries
+2. **Change Detection Engine**: Identifies modifications through PHP events or direct database queries
 3. **Publishing Pipeline**: Distributes changes to external systems with retry logic
 
 ### Change Detection Lifecycle
@@ -49,7 +49,7 @@ Update Composite Hash          Create/Update Publish Records
                               Dispatch PublishModelJob → External System
 ```
 
-#### 2. MySQL Detection (Bulk Detection)
+#### 2. Direct Database Detection (Bulk Detection)
 
 For models updated outside Laravel (e.g., direct database updates, external scripts):
 
@@ -124,24 +124,66 @@ php artisan vendor:publish --tag="laravel-hash-change-detector-config"
 
 ### Relation Tracking
 
-The package automatically tracks changes in related models:
+The package automatically tracks changes in related models using an event-driven approach:
 
-1. **Parent Update Mechanism**: When a related model changes, its parent model's composite hash is automatically updated
-2. **Nested Relations**: Supports dot notation for deep relation tracking (e.g., `posts.comments`)
-3. **Bidirectional Updates**: Changes flow from child to parent models
+1. **Event-Driven Updates**: When a related model changes, it fires a `RelatedModelUpdated` event
+2. **Parent Notification**: Child models define their parent relationships via `getParentModels()`
+3. **Automatic Reloading**: Parent models automatically reload their tracked relations before recalculating hashes
+4. **Clean Separation**: Each model is responsible for its own hash calculation
 
-Example flow:
+#### Implementation Example
+
+```php
+// Child Model
+class OrderItem extends Model implements Hashable
+{
+    use InteractsWithHashes;
+    
+    public function order()
+    {
+        return $this->belongsTo(Order::class);
+    }
+    
+    // Define which models should be notified when this model changes
+    public function getParentModels(): Collection
+    {
+        return collect([$this->order]);
+    }
+}
+
+// Parent Model
+class Order extends Model implements Hashable
+{
+    use InteractsWithHashes;
+    
+    public function getHashableRelations(): array
+    {
+        return ['orderItems']; // Tracks changes in items
+    }
+}
 ```
-Order (parent) has many OrderItems (children)
-  ↓
+
+#### Update Flow
+```
 OrderItem price changes
   ↓
-OrderItem hash updates → Triggers updateParentHashes()
+OrderItem hash updates → Fires RelatedModelUpdated event
   ↓
-Order's composite hash recalculates including all OrderItems
+Event listener calls getParentModels() on OrderItem
   ↓
-Publishing triggered for Order with new data
+Order model is notified → Reloads 'orderItems' relation
+  ↓
+Order recalculates composite hash with fresh data
+  ↓
+Publishing triggered if hash changed
 ```
+
+#### Benefits
+
+- **Loose Coupling**: Child models don't need to know how parent models track relations
+- **Multiple Parents**: A model can easily notify multiple parent models
+- **Maintainable**: Parent models can change their tracked relations without updating children
+- **Testable**: Event-driven architecture is easier to test in isolation
 
 ### Making a Model Hashable
 
@@ -256,7 +298,7 @@ protected function schedule(Schedule $schedule)
 }
 ```
 
-### Detecting Changes via MySQL
+### Detecting Changes via Direct Database
 
 For models updated outside Laravel, use the bulk change detector:
 
@@ -307,12 +349,15 @@ class TestRelationModel extends Model implements Hashable
 {
     use InteractsWithHashes;
     
-    protected function updateParentHashes(): void
+    public function getParentModels(): Collection
     {
+        $parents = collect();
+        
         if ($this->testModel) {
-            $this->testModel->load('testRelations');
-            $this->testModel->updateHash();
+            $parents->push($this->testModel);
         }
+        
+        return $parents;
     }
 }
 ```

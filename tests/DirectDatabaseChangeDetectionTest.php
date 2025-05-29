@@ -96,9 +96,9 @@ it('creates hash for models without hash records', function () {
     expect($hash->attribute_hash)->toBe(md5('1|No Hash|Direct Insert|99.99'));
 });
 
-it('correctly calculates hash using MySQL functions', function () {
+it('correctly calculates hash using database functions', function () {
     $model = TestModel::create([
-        'name' => 'MySQL Test',
+        'name' => 'Database Test',
         'description' => null,
         'price' => 123.45,
         'active' => false,
@@ -112,22 +112,22 @@ it('correctly calculates hash using MySQL functions', function () {
         ->where('hashable_id', $model->id)
         ->delete();
 
-    // Run MySQL-based detection
+    // Run database-based detection
     $job = new DetectChangesJob(TestModel::class);
     $job->handle();
 
-    // Get the hash calculated by MySQL
-    $mysqlHash = Hash::where('hashable_type', TestModel::class)
+    // Get the hash calculated by database
+    $databaseHash = Hash::where('hashable_type', TestModel::class)
         ->where('hashable_id', $model->id)
         ->first();
 
     // Both methods should produce identical hashes
-    expect($mysqlHash->attribute_hash)->toBe($phpHash);
+    expect($databaseHash->attribute_hash)->toBe($phpHash);
     // Attributes are sorted: active, description, name, price
-    expect($mysqlHash->attribute_hash)->toBe(md5('0||MySQL Test|123.45'));
+    expect($databaseHash->attribute_hash)->toBe(md5('0||Database Test|123.45'));
 });
 
-it('handles all hashable attribute types correctly in MySQL', function () {
+it('handles all hashable attribute types correctly in database', function () {
     // Test various data types
     $testCases = [
         ['name' => 'String Test', 'description' => 'Regular string', 'price' => 100, 'active' => true],
@@ -141,7 +141,7 @@ it('handles all hashable attribute types correctly in MySQL', function () {
         $model = TestModel::create($data);
         $phpHash = $model->getCurrentHash()->attribute_hash;
 
-        // Delete hash and recalculate with MySQL
+        // Delete hash and recalculate with database
         Hash::where('hashable_type', TestModel::class)
             ->where('hashable_id', $model->id)
             ->delete();
@@ -149,10 +149,10 @@ it('handles all hashable attribute types correctly in MySQL', function () {
         $job = new DetectChangesJob(TestModel::class);
         $job->handle();
 
-        $mysqlHash = Hash::where('hashable_type', TestModel::class)
+        $databaseHash = Hash::where('hashable_type', TestModel::class)
             ->where('hashable_id', $model->id)
             ->first();
 
-        expect($mysqlHash->attribute_hash)->toBe($phpHash);
+        expect($databaseHash->attribute_hash)->toBe($phpHash);
     }
 });

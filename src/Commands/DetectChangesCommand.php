@@ -19,7 +19,7 @@ class DetectChangesCommand extends Command
      *
      * @var string
      */
-    protected $description = 'Detect changes in models using MySQL hash calculation';
+    protected $description = 'Detect changes in models using direct database hash calculation';
 
     /**
      * Execute the console command.

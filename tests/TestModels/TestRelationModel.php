@@ -37,12 +37,17 @@ class TestRelationModel extends Model implements Hashable
         return $this->belongsTo(TestModel::class);
     }
 
-    protected function updateParentHashes(): void
+    /**
+     * Get parent models that should be notified of changes.
+     */
+    public function getParentModels(): \Illuminate\Support\Collection
     {
+        $parents = collect();
+        
         if ($this->testModel) {
-            // Force reload of relations before updating hash
-            $this->testModel->load('testRelations');
-            $this->testModel->updateHash();
+            $parents->push($this->testModel);
         }
+        
+        return $parents;
     }
 }

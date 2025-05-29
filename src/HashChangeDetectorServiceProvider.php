@@ -11,7 +11,9 @@ use ameax\HashChangeDetector\Commands\CreatePublisherCommand;
 use ameax\HashChangeDetector\Commands\ListPublishersCommand;
 use ameax\HashChangeDetector\Commands\TogglePublisherCommand;
 use ameax\HashChangeDetector\Events\HashChanged;
+use ameax\HashChangeDetector\Events\RelatedModelUpdated;
 use ameax\HashChangeDetector\Listeners\HandleHashChanged;
+use ameax\HashChangeDetector\Listeners\HandleRelatedModelUpdated;
 use Illuminate\Support\Facades\Event;
 
 class HashChangeDetectorServiceProvider extends PackageServiceProvider
@@ -44,5 +46,6 @@ class HashChangeDetectorServiceProvider extends PackageServiceProvider
 
         // Register event listeners
         Event::listen(HashChanged::class, HandleHashChanged::class);
+        Event::listen(RelatedModelUpdated::class, HandleRelatedModelUpdated::class);
     }
 }

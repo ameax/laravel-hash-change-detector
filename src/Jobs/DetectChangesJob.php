@@ -109,7 +109,7 @@ class DetectChangesJob implements ShouldQueue
                 }
             }
         } else {
-            // For MySQL, use native hash function
+            // For direct database queries, use native hash function
             $query = "
                 SELECT 
                     m.id,
@@ -133,7 +133,7 @@ class DetectChangesJob implements ShouldQueue
     }
 
     /**
-     * Build MySQL expression for hash calculation.
+     * Build database expression for hash calculation.
      */
     protected function buildHashExpression(string $tableName, array $attributes, string $algorithm): string
     {
@@ -153,7 +153,7 @@ class DetectChangesJob implements ShouldQueue
                     $parts[] = "IFNULL(CAST(m.{$attribute} AS TEXT), '')";
                 }
             } else {
-                // MySQL: Use IFNULL and cast to char
+                // Direct database: Use IFNULL and cast to char
                 $parts[] = "IFNULL(CAST(m.{$attribute} AS CHAR), '')";
             }
         }
@@ -171,7 +171,7 @@ class DetectChangesJob implements ShouldQueue
             return $concatenated;
         }
         
-        // Apply hash function for MySQL
+        // Apply hash function for direct database queries
         return match ($algorithm) {
             'sha256' => "SHA2({$concatenated}, 256)",
             default => "MD5({$concatenated})",

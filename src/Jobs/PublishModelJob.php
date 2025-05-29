@@ -81,9 +81,13 @@ class PublishModelJob implements ShouldQueue
         
         // Check if we should retry
         $maxAttempts = 3; // Default from config retry intervals
-        if ($this->publish->publisher) {
-            $publisherInstance = $this->publish->publisher->getPublisherInstance();
-            $maxAttempts = $publisherInstance->getMaxAttempts();
+        try {
+            if ($this->publish->publisher) {
+                $publisherInstance = $this->publish->publisher->getPublisherInstance();
+                $maxAttempts = $publisherInstance->getMaxAttempts();
+            }
+        } catch (\Exception $instanceError) {
+            // If we can't create the publisher instance, use default max attempts
         }
         
         if ($this->publish->attempts < $maxAttempts) {
