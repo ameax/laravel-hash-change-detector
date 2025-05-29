@@ -603,6 +603,191 @@ $item->update(['quantity' => 3]);
 DB::table('order_items')->where('id', $item->id)->update(['price' => 60.00]);
 ```
 
+## API Endpoints
+
+The package provides a comprehensive REST API for managing hash detection and publishing:
+
+### Setup
+
+Include the API routes in your application:
+
+```php
+// routes/api.php
+Route::prefix('api/hash-change-detector')
+    ->middleware(['api', 'auth:api']) // Add your preferred middleware
+    ->group(base_path('vendor/ameax/laravel-hash-change-detector/routes/api.php'));
+```
+
+### Available Endpoints
+
+#### Model Hash Information
+```bash
+GET /api/hash-change-detector/models/{type}/{id}/hash
+
+# Example
+GET /api/hash-change-detector/models/Product/123/hash
+
+# Response
+{
+    "model_type": "App\\Models\\Product",
+    "model_id": 123,
+    "attribute_hash": "a1b2c3d4...",
+    "composite_hash": "e5f6g7h8...",
+    "is_main_model": true,
+    "parent_model": null,
+    "updated_at": "2024-01-15T10:30:00Z"
+}
+```
+
+#### Force Publish (Without Hash Change)
+```bash
+POST /api/hash-change-detector/models/{type}/{id}/publish
+
+# Publish to specific publishers by ID
+{
+    "publisher_ids": [1, 2, 3]
+}
+
+# Or by name
+{
+    "publisher_names": ["log", "webhook", "external-api"]
+}
+
+# Response
+{
+    "message": "Publish jobs dispatched",
+    "model": {
+        "type": "App\\Models\\Product",
+        "id": 123
+    },
+    "publishers": [
+        {
+            "publisher_id": 1,
+            "publisher_name": "log",
+            "publish_id": 456
+        }
+    ]
+}
+```
+
+#### Publish History
+```bash
+GET /api/hash-change-detector/models/{type}/{id}/publishes
+
+# With filters
+GET /api/hash-change-detector/models/{type}/{id}/publishes?status=failed&publisher_id=1
+
+# Response (paginated)
+{
+    "data": [
+        {
+            "id": 789,
+            "hash_id": 456,
+            "publisher_id": 1,
+            "status": "published",
+            "attempts": 1,
+            "published_at": "2024-01-15T10:30:00Z",
+            "publisher": {
+                "id": 1,
+                "name": "log"
+            }
+        }
+    ],
+    "links": {...},
+    "meta": {...}
+}
+```
+
+#### Publisher Management
+```bash
+# List all publishers
+GET /api/hash-change-detector/publishers
+GET /api/hash-change-detector/publishers?model_type=Product&status=active
+
+# Update publisher status
+PATCH /api/hash-change-detector/publishers/{id}
+{
+    "status": "inactive"  // or "active"
+}
+```
+
+#### Operations
+```bash
+# Trigger change detection
+POST /api/hash-change-detector/detect-changes
+{
+    "model_type": "App\\Models\\Product"  // Optional, omit for all models
+}
+
+# Retry failed publishes
+POST /api/hash-change-detector/retry-publishes
+{
+    "publisher_id": 1  // Optional, omit for all publishers
+}
+
+# Initialize hashes for existing models
+POST /api/hash-change-detector/initialize-hashes
+{
+    "model_type": "App\\Models\\Product",
+    "chunk_size": 100  // Optional, default 100
+}
+```
+
+#### Statistics
+```bash
+GET /api/hash-change-detector/stats
+GET /api/hash-change-detector/stats?model_type=Product
+
+# Response
+{
+    "total_hashes": 1000,
+    "main_models": 800,
+    "related_models": 200,
+    "total_publishers": 5,
+    "active_publishers": 3,
+    "publishes_by_status": {
+        "published": 450,
+        "failed": 25,
+        "pending": 10,
+        "deferred": 5
+    },
+    "model_specific": {  // Only if model_type specified
+        "model_type": "App\\Models\\Product",
+        "total_models": 150,
+        "publishers": 2
+    }
+}
+```
+
+### API Usage Examples
+
+```php
+// Force publish a model to all active publishers
+$response = Http::post('/api/hash-change-detector/models/Product/123/publish');
+
+// Force publish to specific publishers only
+$response = Http::post('/api/hash-change-detector/models/Product/123/publish', [
+    'publisher_names' => ['webhook', 'external-api']
+]);
+
+// Check if model needs publishing
+$hash = Http::get('/api/hash-change-detector/models/Product/123/hash');
+$history = Http::get('/api/hash-change-detector/models/Product/123/publishes?status=published&limit=1');
+
+if ($hash->json('composite_hash') !== $history->json('data.0.published_hash')) {
+    // Model has unpublished changes
+}
+
+// Bulk retry failed publishes
+$response = Http::post('/api/hash-change-detector/retry-publishes');
+
+// Monitor system health
+$stats = Http::get('/api/hash-change-detector/stats');
+if ($stats->json('publishes_by_status.failed') > 100) {
+    // Alert: Too many failed publishes
+}
+```
+
 ## Testing
 
 ```bash

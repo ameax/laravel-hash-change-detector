@@ -89,6 +89,10 @@ trait InteractsWithHashes
     {
         // Reload hashable relations to ensure we have fresh data
         if (! empty($this->getHashableRelations())) {
+            // Unset relations first to force a fresh load
+            foreach ($this->getHashableRelations() as $relation) {
+                $this->unsetRelation($relation);
+            }
             $this->load($this->getHashableRelations());
         }
 
@@ -190,6 +194,10 @@ trait InteractsWithHashes
                 if ($relation->getRelated()::class === get_class($model)) {
                     return $relation->where($relation->getRelatedKeyName(), $model->getKey())->exists();
                 }
+            } elseif ($relation instanceof \Illuminate\Database\Eloquent\Relations\HasManyThrough) {
+                if ($relation->getRelated()::class === get_class($model)) {
+                    return $relation->where($relation->getQualifiedRelatedKeyName(), $model->getKey())->exists();
+                }
             }
         }
 
@@ -263,6 +271,8 @@ trait InteractsWithHashes
             return;
         }
 
+        // Skip setting parent reference for models that already have a different parent
+        // This prevents overwriting the correct parent (e.g., posts belong to users, not countries)
         $hash = $relatedModel->getCurrentHash();
         if ($hash && (! $hash->main_model_type || ! $hash->main_model_id)) {
             $hash->update([

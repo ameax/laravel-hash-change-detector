@@ -41,7 +41,8 @@ class HashChangeDetectorServiceProvider extends PackageServiceProvider
                 ListPublishersCommand::class,
                 TogglePublisherCommand::class,
                 InitializeHashesCommand::class,
-            ]);
+            ])
+            ->hasRoute('api');
     }
 
     public function boot(): void

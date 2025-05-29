@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace ameax\HashChangeDetector\Models;
 
+use ameax\HashChangeDetector\Database\Factories\PublisherFactory;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
@@ -18,15 +20,19 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  */
 class Publisher extends Model
 {
+    use HasFactory;
+
     protected $fillable = [
         'name',
         'model_type',
         'publisher_class',
         'status',
+        'config',
     ];
 
     protected $casts = [
         'status' => 'string',
+        'config' => 'array',
     ];
 
     public function __construct(array $attributes = [])
@@ -58,5 +64,10 @@ class Publisher extends Model
     public function getPublisherInstance(): object
     {
         return app($this->publisher_class);
+    }
+
+    protected static function newFactory(): PublisherFactory
+    {
+        return PublisherFactory::new();
     }
 }

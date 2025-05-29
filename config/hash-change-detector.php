@@ -57,4 +57,18 @@ return [
     |
     */
     'hash_algorithm' => 'md5',
+
+    /*
+    |--------------------------------------------------------------------------
+    | API Routes
+    |--------------------------------------------------------------------------
+    |
+    | Configuration for API routes registration.
+    |
+    */
+    'api' => [
+        'enabled' => env('HASH_DETECTOR_API_ENABLED', false),
+        'prefix' => 'api/hash-change-detector',
+        'middleware' => ['api'],
+    ],
 ];

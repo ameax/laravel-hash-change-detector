@@ -37,10 +37,12 @@ return new class extends Migration
             $table->string('model_type');
             $table->string('publisher_class');
             $table->enum('status', ['active', 'inactive'])->default('active');
+            $table->json('config')->nullable();
             $table->timestamps();
 
             $table->index('model_type');
             $table->index('status');
+            $table->unique('name');
         });
 
         // Create publishes table
