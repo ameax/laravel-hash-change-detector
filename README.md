@@ -37,14 +37,14 @@ composer require ameax/laravel-hash-change-detector
 Publish and run migrations:
 
 ```bash
-php artisan vendor:publish --tag="laravel-hash-change-detector-migrations"
+php artisan vendor:publish --tag="hash-change-detector-migrations"
 php artisan migrate
 ```
 
 Optionally publish the config:
 
 ```bash
-php artisan vendor:publish --tag="laravel-hash-change-detector-config"
+php artisan vendor:publish --tag="hash-change-detector-config"
 ```
 
 ### Optional: API Documentation with Swagger
