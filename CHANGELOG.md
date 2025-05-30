@@ -2,6 +2,10 @@
 
 All notable changes to `laravel-hash-change-detector` will be documented in this file.
 
+## v1.0.5 - 2025-05-30
+
+**Full Changelog**: https://github.com/ameax/laravel-hash-change-detector/compare/v1.0.4...v1.0.5
+
 ## v1.0.1 - 2025-05-30
 
 **Full Changelog**: https://github.com/ameax/laravel-hash-change-detector/commits/v1.0.1
