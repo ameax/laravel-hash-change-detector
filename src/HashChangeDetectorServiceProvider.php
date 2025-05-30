@@ -32,7 +32,7 @@ class HashChangeDetectorServiceProvider extends PackageServiceProvider
             ->name('laravel-hash-change-detector')
             ->hasConfigFile()
             ->hasViews()
-            ->publishesMigrations()
+            ->hasMigration('0000_00_00_000000_create_hash_change_detector_tables')
             ->hasCommands([
                 HashChangeDetectorCommand::class,
                 DetectChangesCommand::class,
