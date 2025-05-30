@@ -46,3 +46,18 @@ it('resolves facade to correct instance', function () {
 
     expect($instance)->toBeInstanceOf(\ameax\HashChangeDetector\HashChangeDetector::class);
 });
+
+it('loads migrations in test environment', function () {
+    // Check that the migration file exists in the expected location
+    $migrationPath = __DIR__ . '/../database/migrations/0000_00_00_000000_create_hash_change_detector_tables.php';
+    expect(file_exists($migrationPath))->toBeTrue();
+    
+    // Check that tables are created (which proves migrations are loaded)
+    $hashesTable = config('hash-change-detector.tables.hashes', 'hashes');
+    $publishersTable = config('hash-change-detector.tables.publishers', 'publishers');
+    $publishesTable = config('hash-change-detector.tables.publishes', 'publishes');
+    
+    expect(\Schema::hasTable($hashesTable))->toBeTrue();
+    expect(\Schema::hasTable($publishersTable))->toBeTrue();
+    expect(\Schema::hasTable($publishesTable))->toBeTrue();
+});
