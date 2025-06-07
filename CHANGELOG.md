@@ -4,6 +4,8 @@ All notable changes to `laravel-hash-change-detector` will be documented in this
 
 ## [Unreleased]
 
+## v1.1.0 - 2025-06-07
+
 ### Added
 
 - Automatic parent model hash regeneration when related models change
