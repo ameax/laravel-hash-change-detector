@@ -74,9 +74,14 @@ class Product extends Model implements Hashable
         return ['name', 'price', 'sku'];
     }
     
-    public function getHashableRelations(): array
+    public function getHashCompositeDependencies(): array
     {
         return []; // No related models to track
+    }
+    
+    public function getHashRelationsToNotifyOnChange(): array
+    {
+        return []; // No dependent models to notify
     }
 }
 ```
@@ -114,14 +119,22 @@ class Order extends Model implements Hashable
     }
     
     /**
-     * Define which relationships to track
+     * Define which relationships to include in composite hash
      */
-    public function getHashableRelations(): array
+    public function getHashCompositeDependencies(): array
     {
         return [
             'orderItems',     // HasMany relationship
             'shipping',       // HasOne relationship
         ];
+    }
+    
+    /**
+     * Define which related models should be notified when this changes
+     */
+    public function getHashRelationsToNotifyOnChange(): array
+    {
+        return []; // Orders typically don't notify other models
     }
     
     // Your regular model relationships
@@ -151,7 +164,7 @@ class OrderItem extends Model implements Hashable
         return ['product_name', 'quantity', 'price'];
     }
     
-    public function getHashableRelations(): array
+    public function getHashCompositeDependencies(): array
     {
         return []; // Child models typically don't track relations
     }
@@ -159,9 +172,9 @@ class OrderItem extends Model implements Hashable
     /**
      * Define which parent models should be notified of changes
      */
-    public function getParentModels(): Collection
+    public function getHashRelationsToNotifyOnChange(): array
     {
-        return collect([$this->order]);
+        return ['order']; // Notify parent order when this item changes
     }
     
     public function order()
@@ -174,9 +187,73 @@ class OrderItem extends Model implements Hashable
 ### How It Works
 
 1. **Individual Hashes**: Each model has its own hash based on `getHashableAttributes()`
-2. **Composite Hashes**: Parent models also have a composite hash that includes hashes from all tracked relations
-3. **Automatic Updates**: When a child changes, it notifies its parents to recalculate their composite hashes
-4. **Event Driven**: All updates trigger events that you can listen to
+2. **Composite Hashes**: Parent models also have a composite hash that includes hashes from all tracked relations (defined in `getHashCompositeDependencies()`)
+3. **Automatic Updates**: When a model changes, it notifies related models defined in `getHashRelationsToNotifyOnChange()` to recalculate their hashes
+4. **Collection Support**: Automatically handles HasMany and BelongsToMany relationships, updating all models in the collection
+5. **Event Driven**: All updates trigger events that you can listen to
+
+### Understanding the Two Relationship Methods
+
+The package uses two methods to define relationships:
+
+#### `getHashCompositeDependencies()`
+Defines which related models should be included when calculating this model's composite hash.
+- Used to track dependencies that affect this model's state
+- Example: An Order includes its OrderItems in its composite hash
+
+#### `getHashRelationsToNotifyOnChange()`
+Defines which related models should be notified when this model changes.
+- Used to propagate changes up the relationship chain
+- Supports both single models (BelongsTo, HasOne) and collections (HasMany, BelongsToMany)
+- Example: When an OrderItem changes, it notifies its parent Order
+
+```php
+// Example: Blog system with User -> Posts -> Comments
+class User extends Model implements Hashable
+{
+    use InteractsWithHashes;
+    
+    public function getHashCompositeDependencies(): array
+    {
+        return ['posts']; // User's hash includes all their posts
+    }
+    
+    public function getHashRelationsToNotifyOnChange(): array
+    {
+        return []; // Users typically don't notify other models
+    }
+}
+
+class Post extends Model implements Hashable
+{
+    use InteractsWithHashes;
+    
+    public function getHashCompositeDependencies(): array
+    {
+        return ['comments', 'user']; // Post's hash includes comments and author
+    }
+    
+    public function getHashRelationsToNotifyOnChange(): array
+    {
+        return ['user']; // When post changes, notify the author
+    }
+}
+
+class Comment extends Model implements Hashable
+{
+    use InteractsWithHashes;
+    
+    public function getHashCompositeDependencies(): array
+    {
+        return ['user']; // Comment's hash includes the commenter
+    }
+    
+    public function getHashRelationsToNotifyOnChange(): array
+    {
+        return ['post', 'post.user']; // Notify both post and post's author
+    }
+}
+```
 
 ## Model Types and Detection Strategies
 
@@ -413,29 +490,48 @@ protected function schedule(Schedule $schedule)
 Track nested relationships using dot notation:
 
 ```php
-public function getHashableRelations(): array
+public function getHashCompositeDependencies(): array
 {
     return [
         'orderItems',           // Direct relation
         'orderItems.product',   // Nested relation
     ];
 }
-```
 
-### Multiple Parents
-
-A model can notify multiple parent models:
-
-```php
-public function getParentModels(): Collection
+// Notify nested parent models
+public function getHashRelationsToNotifyOnChange(): array
 {
-    return collect([
-        $this->order,
-        $this->warehouse,
-        $this->invoice
-    ])->filter(); // Filter removes nulls
+    return [
+        'user',              // Direct parent
+        'user.country',      // Nested parent
+    ];
 }
 ```
+
+### Multiple Parents & Collections
+
+A model can notify multiple parent models, including collections:
+
+```php
+// In a Comment model that belongs to both Post and User
+public function getHashRelationsToNotifyOnChange(): array
+{
+    return [
+        'post',      // BelongsTo - single model
+        'user',      // BelongsTo - single model
+    ];
+}
+
+// In a User model with many posts
+public function getHashRelationsToNotifyOnChange(): array
+{
+    return [
+        'posts',     // HasMany - collection of models
+    ];
+}
+```
+
+The package automatically handles both single models and collections, updating all dependent models when changes occur.
 
 ### Custom Hash Algorithm
 
@@ -553,9 +649,14 @@ class Order extends Model implements Hashable
         return ['order_number', 'customer_email', 'total_amount', 'status'];
     }
     
-    public function getHashableRelations(): array
+    public function getHashCompositeDependencies(): array
     {
         return ['items'];
+    }
+    
+    public function getHashRelationsToNotifyOnChange(): array
+    {
+        return []; // Orders don't notify other models
     }
     
     public function items()
@@ -576,14 +677,14 @@ class OrderItem extends Model implements Hashable
         return ['product_name', 'quantity', 'price'];
     }
     
-    public function getHashableRelations(): array
+    public function getHashCompositeDependencies(): array
     {
         return [];
     }
     
-    public function getParentModels(): Collection
+    public function getHashRelationsToNotifyOnChange(): array
     {
-        return collect([$this->order]);
+        return ['order']; // Notify parent order
     }
     
     public function order()
@@ -643,8 +744,14 @@ GET /api/hash-change-detector/models/Product/123/hash
     "model_id": 123,
     "attribute_hash": "a1b2c3d4...",
     "composite_hash": "e5f6g7h8...",
-    "is_main_model": true,
-    "parent_model": null,
+    "has_dependents": true,
+    "dependent_models": [
+        {
+            "type": "App\\Models\\OrderItem",
+            "id": 456,
+            "relation": "order"
+        }
+    ],
     "updated_at": "2024-01-15T10:30:00Z"
 }
 ```
@@ -751,8 +858,8 @@ GET /api/hash-change-detector/stats?model_type=Product
 # Response
 {
     "total_hashes": 1000,
-    "main_models": 800,
-    "related_models": 200,
+    "models_with_dependents": 800,
+    "models_without_dependents": 200,
     "total_publishers": 5,
     "active_publishers": 3,
     "publishes_by_status": {
