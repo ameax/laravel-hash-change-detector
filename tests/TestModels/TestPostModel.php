@@ -43,22 +43,12 @@ class TestPostModel extends Model implements Hashable
     }
 
     /**
-     * Get parent models that should be notified of changes.
-     * This allows the country to be updated when a post changes.
+     * Get parent model relations that should be notified when this model changes.
+     * Since countries track posts through hasManyThrough, we need to notify them too.
      */
-    public function getParentModels(): Collection
+    public function getParentModelRelations(): array
     {
-        $parents = collect();
-
-        // Load user relationship if not already loaded
-        if (! $this->relationLoaded('user')) {
-            $this->load('user.country');
-        }
-
-        if ($this->user && $this->user->country) {
-            $parents->push($this->user->country);
-        }
-
-        return $parents;
+        // Notify both direct parent (user) and indirect parent (country)
+        return ['user', 'user.country'];
     }
 }

@@ -40,16 +40,10 @@ class TestRelationModel extends Model implements Hashable
     }
 
     /**
-     * Get parent models that should be notified of changes.
+     * Get parent model relations that should be notified when this model changes.
      */
-    public function getParentModels(): \Illuminate\Support\Collection
+    public function getParentModelRelations(): array
     {
-        $parents = collect();
-
-        if ($this->testModel) {
-            $parents->push($this->testModel);
-        }
-
-        return $parents;
+        return ['testModel'];
     }
 }

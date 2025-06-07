@@ -78,6 +78,10 @@ it('updates country hash when a post through user changes', function () {
         'published' => false,
     ]);
 
+    // Force initial composite hash calculation including posts
+    $country->load('posts');
+    $country->updateHash();
+    
     // Get initial hash
     $initialHash = $country->getCurrentHash();
     $initialCompositeHash = $initialHash->composite_hash;
@@ -106,6 +110,10 @@ it('updates country hash when a post is added to a user', function () {
         'email' => 'alice@example.com',
     ]);
 
+    // Force initial composite hash calculation
+    $country->load('posts');
+    $country->updateHash();
+    
     // Get initial hash
     $initialHash = $country->getCurrentHash();
     $initialCompositeHash = $initialHash->composite_hash;
@@ -197,6 +205,10 @@ it('does not update country hash when intermediate user changes', function () {
         'published' => true,
     ]);
 
+    // Force initial composite hash calculation
+    $country->load('posts');
+    $country->updateHash();
+    
     // Get initial hash
     $initialHash = $country->getCurrentHash();
     $initialCompositeHash = $initialHash->composite_hash;
@@ -208,7 +220,9 @@ it('does not update country hash when intermediate user changes', function () {
     $country->refresh();
     $currentHash = $country->getCurrentHash();
 
-    // Country's composite hash should NOT change because we only track posts, not users
+    // Country's composite hash should NOT change because:
+    // 1. Country only tracks posts via hasManyThrough, not users
+    // 2. The user change doesn't affect which posts belong to the country
     expect($currentHash->composite_hash)->toBe($initialCompositeHash);
 });
 
