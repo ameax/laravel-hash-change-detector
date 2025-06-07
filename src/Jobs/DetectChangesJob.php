@@ -6,7 +6,7 @@ namespace ameax\HashChangeDetector\Jobs;
 
 use ameax\HashChangeDetector\Events\HashableModelDeleted;
 use ameax\HashChangeDetector\Models\Hash;
-use ameax\HashChangeDetector\Models\HashParent;
+use ameax\HashChangeDetector\Models\HashDependent;
 use ameax\HashChangeDetector\Models\Publish;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -229,18 +229,18 @@ class DetectChangesJob implements ShouldQueue
                 continue;
             }
 
-            // Find all parent models that need updating
-            $parents = $hash->parents()->get();
+            // Find all dependent models that need updating
+            $dependents = $hash->dependents()->get();
 
-            foreach ($parents as $parentRef) {
-                /** @var HashParent $parentRef */
-                $parentModel = $parentRef->parent();
-                if ($parentModel && method_exists($parentModel, 'updateHash')) {
+            foreach ($dependents as $dependentRef) {
+                /** @var HashDependent $dependentRef */
+                $dependentModel = $dependentRef->dependent();
+                if ($dependentModel && method_exists($dependentModel, 'updateHash')) {
                     // Reload relations to ensure fresh data
-                    if (method_exists($parentModel, 'getHashableRelations')) {
-                        $parentModel->load($parentModel->getHashableRelations());
+                    if (method_exists($dependentModel, 'getHashCompositeDependencies')) {
+                        $dependentModel->load($dependentModel->getHashCompositeDependencies());
                     }
-                    $parentModel->updateHash();
+                    $dependentModel->updateHash();
                 }
             }
 

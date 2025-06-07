@@ -7,7 +7,7 @@ namespace ameax\HashChangeDetector\Http\Controllers;
 use ameax\HashChangeDetector\Jobs\DetectChangesJob;
 use ameax\HashChangeDetector\Jobs\PublishModelJob;
 use ameax\HashChangeDetector\Models\Hash;
-use ameax\HashChangeDetector\Models\HashParent;
+use ameax\HashChangeDetector\Models\HashDependent;
 use ameax\HashChangeDetector\Models\Publish;
 use ameax\HashChangeDetector\Models\Publisher;
 use Illuminate\Http\JsonResponse;
@@ -96,9 +96,9 @@ class HashChangeDetectorApiController extends Controller
                         new OA\Property(property: 'model_id', type: 'integer', example: 1),
                         new OA\Property(property: 'attribute_hash', type: 'string', example: 'a1b2c3d4e5f6...'),
                         new OA\Property(property: 'composite_hash', type: 'string', nullable: true, example: 'f6e5d4c3b2a1...'),
-                        new OA\Property(property: 'has_parents', type: 'boolean', example: false),
+                        new OA\Property(property: 'has_dependents', type: 'boolean', example: false),
                         new OA\Property(
-                            property: 'parent_models',
+                            property: 'dependent_models',
                             type: 'array',
                             items: new OA\Items(
                                 properties: [
@@ -144,12 +144,12 @@ class HashChangeDetectorApiController extends Controller
             'model_id' => $modelId,
             'attribute_hash' => $hash->attribute_hash,
             'composite_hash' => $hash->composite_hash,
-            'has_parents' => $hash->hasParents(),
-            'parent_models' => $hash->parents->map(function (HashParent $parent) {
+            'has_dependents' => $hash->hasDependents(),
+            'dependent_models' => $hash->dependents->map(function (HashDependent $dependent) {
                 return [
-                    'type' => $parent->getAttribute('parent_model_type'),
-                    'id' => $parent->getAttribute('parent_model_id'),
-                    'relation' => $parent->getAttribute('relation_name'),
+                    'type' => $dependent->getAttribute('dependent_model_type'),
+                    'id' => $dependent->getAttribute('dependent_model_id'),
+                    'relation' => $dependent->getAttribute('relation_name'),
                 ];
             }),
             'updated_at' => $hash->updated_at->toIso8601String(),
@@ -602,8 +602,8 @@ class HashChangeDetectorApiController extends Controller
                 content: new OA\JsonContent(
                     properties: [
                         new OA\Property(property: 'total_hashes', type: 'integer'),
-                        new OA\Property(property: 'models_without_parents', type: 'integer'),
-                        new OA\Property(property: 'models_with_parents', type: 'integer'),
+                        new OA\Property(property: 'models_without_dependents', type: 'integer'),
+                        new OA\Property(property: 'models_with_dependents', type: 'integer'),
                         new OA\Property(property: 'total_publishers', type: 'integer'),
                         new OA\Property(property: 'active_publishers', type: 'integer'),
                         new OA\Property(
@@ -629,8 +629,8 @@ class HashChangeDetectorApiController extends Controller
     {
         $stats = [
             'total_hashes' => Hash::count(),
-            'models_without_parents' => Hash::whereDoesntHave('parents')->count(),
-            'models_with_parents' => Hash::whereHas('parents')->count(),
+            'models_without_dependents' => Hash::whereDoesntHave('dependents')->count(),
+            'models_with_dependents' => Hash::whereHas('dependents')->count(),
             'total_publishers' => Publisher::count(),
             'active_publishers' => Publisher::where('status', 'active')->count(),
             'publishes_by_status' => Publish::select('status', DB::raw('count(*) as count'))

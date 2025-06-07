@@ -18,7 +18,7 @@ class ExternalSyncTestModel extends TestModel
     protected $table = 'test_models'; // Use same table as TestModel
 
     // Override to prevent relation loading issues in tests
-    public function getHashableRelations(): array
+    public function getHashCompositeDependencies(): array
     {
         return [];
     }

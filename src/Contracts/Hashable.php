@@ -19,7 +19,7 @@ interface Hashable
      *
      * @return array<string>
      */
-    public function getHashableRelations(): array;
+    public function getHashCompositeDependencies(): array;
 
     /**
      * Get the current hash record for this model.
@@ -39,10 +39,10 @@ interface Hashable
     public function calculateCompositeHash(): string;
 
     /**
-     * Get the parent model relations that should be notified when this model changes.
-     * Return an array of relation names that point to parent models.
+     * Get the relations that should be notified when this model's hash changes.
+     * Return an array of relation names that point to dependent models.
      *
      * @return array<string>
      */
-    public function getParentModelRelations(): array;
+    public function getHashRelationsToNotifyOnChange(): array;
 }

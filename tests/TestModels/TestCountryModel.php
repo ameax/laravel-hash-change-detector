@@ -43,7 +43,7 @@ class TestCountryModel extends Model implements Hashable
         return ['name', 'code'];
     }
 
-    public function getHashableRelations(): array
+    public function getHashCompositeDependencies(): array
     {
         return ['posts'];
     }

@@ -17,67 +17,67 @@ class HandleRelatedModelUpdated
         $updatedModel = $event->model;
         $action = $event->action;
 
-        // Get parent models from the updated model's getParentModelRelations() method
-        if (method_exists($updatedModel, 'getParentModelRelations')) {
+        // Get dependent models from the updated model's getHashRelationsToNotifyOnChange() method
+        if (method_exists($updatedModel, 'getHashRelationsToNotifyOnChange')) {
             // Store parent references before deletion
-            static $parentReferences = [];
+            static $dependentReferences = [];
 
             if ($action === 'deleting') {
-                // Store parent references before the model is deleted
-                foreach ($updatedModel->getParentModelRelations() as $relationName) {
+                // Store dependent references before the model is deleted
+                foreach ($updatedModel->getHashRelationsToNotifyOnChange() as $relationName) {
                     try {
                         // Handle nested relations (e.g., 'user.country')
                         if (str_contains($relationName, '.')) {
                             $parts = explode('.', $relationName);
-                            $parent = $updatedModel;
+                            $dependent = $updatedModel;
                             foreach ($parts as $part) {
-                                $parent = $parent->$part;
-                                if (! $parent) {
+                                $dependent = $dependent->$part;
+                                if (! $dependent) {
                                     break;
                                 }
                             }
                         } else {
-                            $parent = $updatedModel->$relationName;
+                            $dependent = $updatedModel->$relationName;
                         }
 
-                        if ($parent && $parent instanceof Hashable) {
+                        if ($dependent && $dependent instanceof Hashable) {
                             $modelKey = get_class($updatedModel).':'.$updatedModel->getKey();
-                            $parentReferences[$modelKey][] = $parent;
+                            $dependentReferences[$modelKey][] = $dependent;
                         }
                     } catch (\Exception $e) {
                         continue;
                     }
                 }
             } elseif ($action === 'deleted') {
-                // Update parent hashes after deletion using stored references
+                // Update dependent hashes after deletion using stored references
                 $modelKey = get_class($updatedModel).':'.$updatedModel->getKey();
-                if (isset($parentReferences[$modelKey])) {
-                    foreach ($parentReferences[$modelKey] as $parent) {
-                        $parent->load($parent->getHashableRelations());
-                        $parent->updateHash();
+                if (isset($dependentReferences[$modelKey])) {
+                    foreach ($dependentReferences[$modelKey] as $dependent) {
+                        $dependent->load($dependent->getHashCompositeDependencies());
+                        $dependent->updateHash();
                     }
-                    unset($parentReferences[$modelKey]);
+                    unset($dependentReferences[$modelKey]);
                 }
             } else {
                 // For create/update, update immediately
-                foreach ($updatedModel->getParentModelRelations() as $relationName) {
+                foreach ($updatedModel->getHashRelationsToNotifyOnChange() as $relationName) {
                     try {
                         // Handle nested relations (e.g., 'user.country')
                         if (str_contains($relationName, '.')) {
                             $parts = explode('.', $relationName);
-                            $parent = $updatedModel;
+                            $dependent = $updatedModel;
                             foreach ($parts as $part) {
-                                $parent = $parent->$part;
-                                if (! $parent) {
+                                $dependent = $dependent->$part;
+                                if (! $dependent) {
                                     break;
                                 }
                             }
                         } else {
-                            $parent = $updatedModel->$relationName;
+                            $dependent = $updatedModel->$relationName;
                         }
 
-                        if ($parent && $parent instanceof Hashable) {
-                            $parent->updateHash();
+                        if ($dependent && $dependent instanceof Hashable) {
+                            $dependent->updateHash();
                         }
                     } catch (\Exception $e) {
                         continue;

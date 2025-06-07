@@ -8,7 +8,7 @@ use ameax\HashChangeDetector\Events\HashChanged;
 use ameax\HashChangeDetector\Events\HashUpdatedWithoutPublishing;
 use ameax\HashChangeDetector\Events\RelatedModelUpdated;
 use ameax\HashChangeDetector\Models\Hash;
-use ameax\HashChangeDetector\Models\HashParent;
+use ameax\HashChangeDetector\Models\HashDependent;
 use ameax\HashChangeDetector\Models\Publish;
 use ameax\HashChangeDetector\Models\Publisher;
 use Illuminate\Database\Eloquent\Model;
@@ -91,18 +91,18 @@ trait InteractsWithHashes
      */
     public function calculateCompositeHash(): string
     {
-        // Reload hashable relations to ensure we have fresh data
-        if (! empty($this->getHashableRelations())) {
+        // Reload composite dependencies to ensure we have fresh data
+        if (! empty($this->getHashCompositeDependencies())) {
             // Unset relations first to force a fresh load
-            foreach ($this->getHashableRelations() as $relation) {
+            foreach ($this->getHashCompositeDependencies() as $relation) {
                 $this->unsetRelation($relation);
             }
-            $this->load($this->getHashableRelations());
+            $this->load($this->getHashCompositeDependencies());
         }
 
         $hashes = collect([$this->calculateAttributeHash()]);
 
-        foreach ($this->getHashableRelations() as $relation) {
+        foreach ($this->getHashCompositeDependencies() as $relation) {
             $hashes = $hashes->merge($this->getRelationHashes($relation));
         }
 
@@ -131,8 +131,8 @@ trait InteractsWithHashes
                 'composite_hash' => $compositeHash,
             ]);
 
-            // Update parent references
-            $this->updateParentReferences($hash);
+            // Update dependent references
+            $this->updateDependentReferences($hash);
 
             // Fire event for hash change
             event(new HashChanged($this, $attributeHash, $compositeHash));
@@ -162,8 +162,8 @@ trait InteractsWithHashes
                 'composite_hash' => $compositeHash,
             ]);
 
-            // Update parent references
-            $this->updateParentReferences($hash);
+            // Update dependent references
+            $this->updateDependentReferences($hash);
 
             // Mark specified publishers as synced
             $this->markPublishersAsSynced($hash, $syncedPublishers);
@@ -273,13 +273,13 @@ trait InteractsWithHashes
     }
 
     /**
-     * Ensure related model hash has parent reference.
-     * With the new parent tracking system, this is handled by updateParentReferences.
+     * Ensure related model hash has dependent reference.
+     * With the new dependent tracking system, this is handled by updateDependentReferences.
      */
     protected function ensureRelatedHashHasParentReference(Model $relatedModel): void
     {
-        // This method is now a no-op as parent references are tracked
-        // via the hash_parents table when models update their own hashes
+        // This method is now a no-op as dependent references are tracked
+        // via the hash_dependents table when models update their own hashes
     }
 
     /**
@@ -296,38 +296,38 @@ trait InteractsWithHashes
     }
 
     /**
-     * Get the parent model relations that should be notified when this model changes.
-     * Override this method in your model to specify which relations point to parent models.
+     * Get the relations that should be notified when this model's hash changes.
+     * Override this method in your model to specify which relations should be notified.
      * For example, a Comment model might return ['post', 'user'] if changes to comments
      * should trigger hash updates on both the post and user.
      *
      * @return array<string>
      */
-    public function getParentModelRelations(): array
+    public function getHashRelationsToNotifyOnChange(): array
     {
         return [];
     }
 
     /**
-     * Update parent references in the hash_parents table.
+     * Update dependent references in the hash_dependents table.
      */
-    protected function updateParentReferences(Hash $hash): void
+    protected function updateDependentReferences(Hash $hash): void
     {
-        // Clear existing parent references
-        DB::table(config('hash-change-detector.tables.hash_parents', 'hash_parents'))
-            ->where('child_hash_id', $hash->id)
+        // Clear existing dependent references
+        DB::table(config('hash-change-detector.tables.hash_dependents', 'hash_dependents'))
+            ->where('hash_id', $hash->id)
             ->delete();
 
-        // Add parent references based on getParentModelRelations()
-        foreach ($this->getParentModelRelations() as $relationName) {
+        // Add dependent references based on getHashRelationsToNotifyOnChange()
+        foreach ($this->getHashRelationsToNotifyOnChange() as $relationName) {
             try {
-                $parent = $this->resolveParentModel($relationName);
+                $dependent = $this->resolveDependentModel($relationName);
 
-                if ($parent && $parent instanceof Model) {
-                    HashParent::create([
-                        'child_hash_id' => $hash->id,
-                        'parent_model_type' => get_class($parent),
-                        'parent_model_id' => $parent->getKey(),
+                if ($dependent && $dependent instanceof Model) {
+                    HashDependent::create([
+                        'hash_id' => $hash->id,
+                        'dependent_model_type' => get_class($dependent),
+                        'dependent_model_id' => $dependent->getKey(),
                         'relation_name' => $relationName,
                     ]);
                 }
@@ -339,9 +339,9 @@ trait InteractsWithHashes
     }
 
     /**
-     * Resolve a parent model from a relation name (supports nested relations).
+     * Resolve a dependent model from a relation name (supports nested relations).
      */
-    protected function resolveParentModel(string $relationName): ?Model
+    protected function resolveDependentModel(string $relationName): ?Model
     {
         // Handle nested relations (e.g., 'user.country')
         if (str_contains($relationName, '.')) {

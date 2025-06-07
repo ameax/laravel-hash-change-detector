@@ -16,10 +16,10 @@ it('identifies model without parents correctly', function () {
 
     $hash = $model->getCurrentHash();
 
-    expect($hash->hasParents())->toBeFalse();
+    expect($hash->hasDependents())->toBeFalse();
 });
 
-it('identifies model with parents correctly', function () {
+it('identifies model with dependents correctly', function () {
     $parent = TestModel::create([
         'name' => 'Parent Model',
         'description' => 'Test Description',
@@ -39,7 +39,7 @@ it('identifies model with parents correctly', function () {
 
     $childHash = $child->getCurrentHash();
 
-    expect($childHash->hasParents())->toBeTrue();
+    expect($childHash->hasDependents())->toBeTrue();
 });
 
 it('detects attribute hash changes', function () {
@@ -94,7 +94,7 @@ it('detects composite hash changes', function () {
     expect($originalHash->hasCompositeChanged($newComposite))->toBeTrue();
 });
 
-it('tracks parent-child relationships correctly', function () {
+it('tracks dependent relationships correctly', function () {
     $parent = TestModel::create([
         'name' => 'Parent Model',
         'description' => 'Test Description',
@@ -112,14 +112,14 @@ it('tracks parent-child relationships correctly', function () {
         $child->updateHash();
     }
 
-    // Check that children have parent references
+    // Check that children have dependent references
     foreach ($children as $child) {
         $childHash = $child->getCurrentHash();
-        $parents = $childHash->parents;
+        $dependents = $childHash->dependents;
 
-        expect($parents)->toHaveCount(1);
-        expect($parents->first()->parent_model_type)->toBe(TestModel::class);
-        expect($parents->first()->parent_model_id)->toBe($parent->id);
+        expect($dependents)->toHaveCount(1);
+        expect($dependents->first()->dependent_model_type)->toBe(TestModel::class);
+        expect($dependents->first()->dependent_model_id)->toBe($parent->id);
     }
 });
 

@@ -30,7 +30,7 @@ class TestModel extends Model implements Hashable
         return ['name', 'description', 'price', 'active'];
     }
 
-    public function getHashableRelations(): array
+    public function getHashCompositeDependencies(): array
     {
         return ['testRelations'];
     }

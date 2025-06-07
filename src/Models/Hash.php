@@ -18,8 +18,7 @@ use Illuminate\Database\Eloquent\Relations\MorphTo;
  * @property \Illuminate\Support\Carbon $updated_at
  * @property-read \Illuminate\Database\Eloquent\Model $hashable
  * @property-read \Illuminate\Database\Eloquent\Collection<int, \ameax\HashChangeDetector\Models\Publish> $publishes
- * @property-read \Illuminate\Database\Eloquent\Collection<int, \ameax\HashChangeDetector\Models\HashParent> $parents
- * @property-read \Illuminate\Database\Eloquent\Collection<int, \ameax\HashChangeDetector\Models\HashParent> $children
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \ameax\HashChangeDetector\Models\HashDependent> $dependents
  */
 class Hash extends Model
 {
@@ -42,20 +41,11 @@ class Hash extends Model
     }
 
     /**
-     * Get parent relationships for this hash.
+     * Get dependent models that should be notified when this hash changes.
      */
-    public function parents(): HasMany
+    public function dependents(): HasMany
     {
-        return $this->hasMany(HashParent::class, 'child_hash_id');
-    }
-
-    /**
-     * Get child relationships where this model is the parent.
-     */
-    public function children(): HasMany
-    {
-        return $this->hasMany(HashParent::class, 'parent_model_id', 'hashable_id')
-            ->where('parent_model_type', $this->hashable_type);
+        return $this->hasMany(HashDependent::class, 'hash_id');
     }
 
     public function publishes(): HasMany
@@ -64,11 +54,11 @@ class Hash extends Model
     }
 
     /**
-     * Check if this hash has any parent models.
+     * Check if this hash has any dependent models.
      */
-    public function hasParents(): bool
+    public function hasDependents(): bool
     {
-        return $this->parents()->exists();
+        return $this->dependents()->exists();
     }
 
     public function hasChanged(string $newHash): bool

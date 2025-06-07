@@ -36,16 +36,16 @@ class TestPostModel extends Model implements Hashable
         return ['title', 'content', 'published'];
     }
 
-    public function getHashableRelations(): array
+    public function getHashCompositeDependencies(): array
     {
         return [];
     }
 
     /**
-     * Get parent model relations that should be notified when this model changes.
+     * Get relations that should be notified when this model's hash changes.
      * Since countries track posts through hasManyThrough, we need to notify them too.
      */
-    public function getParentModelRelations(): array
+    public function getHashRelationsToNotifyOnChange(): array
     {
         // Notify both direct parent (user) and indirect parent (country)
         return ['user', 'user.country'];

@@ -34,7 +34,7 @@ class ReadOnlyReportModel extends Model implements Hashable
         ];
     }
 
-    public function getHashableRelations(): array
+    public function getHashCompositeDependencies(): array
     {
         return []; // Read-only models typically don't track relations
     }

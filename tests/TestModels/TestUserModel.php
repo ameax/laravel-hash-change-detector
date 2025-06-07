@@ -37,7 +37,7 @@ class TestUserModel extends Model implements Hashable
         return ['name', 'email'];
     }
 
-    public function getHashableRelations(): array
+    public function getHashCompositeDependencies(): array
     {
         return [];
     }

@@ -30,7 +30,7 @@ it('stores full model class name in hashable_type field', function () {
     expect($rawHash->hashable_type)->toBe('ameax\HashChangeDetector\Tests\TestModels\TestModel');
 });
 
-it('stores parent model class name in hash_parents table', function () {
+it('stores dependent model class name in hash_dependents table', function () {
     $parent = TestModel::create([
         'name' => 'Parent Model',
         'description' => 'Parent',
@@ -45,20 +45,20 @@ it('stores parent model class name in hash_parents table', function () {
         'order' => 1,
     ]);
 
-    // Update child hash which will store parent references
+    // Update child hash which will store dependent references
     $child->updateHash();
 
     $childHash = $child->getCurrentHash();
-    $parentRefs = $childHash->parents;
+    $dependentRefs = $childHash->dependents;
 
-    // Check parent model type storage in hash_parents table
-    expect($parentRefs)->toHaveCount(1);
+    // Check dependent model type storage in hash_dependents table
+    expect($dependentRefs)->toHaveCount(1);
 
-    $parentRef = $parentRefs->first();
-    expect($parentRef->parent_model_type)->toBe(TestModel::class);
-    expect($parentRef->parent_model_type)->toBe('ameax\HashChangeDetector\Tests\TestModels\TestModel');
-    expect($parentRef->parent_model_id)->toBe($parent->id);
-    expect($parentRef->relation_name)->toBe('testModel');
+    $dependentRef = $dependentRefs->first();
+    expect($dependentRef->dependent_model_type)->toBe(TestModel::class);
+    expect($dependentRef->dependent_model_type)->toBe('ameax\HashChangeDetector\Tests\TestModels\TestModel');
+    expect($dependentRef->dependent_model_id)->toBe($parent->id);
+    expect($dependentRef->relation_name)->toBe('testModel');
 });
 
 it('uses full class name in direct database detection queries', function () {

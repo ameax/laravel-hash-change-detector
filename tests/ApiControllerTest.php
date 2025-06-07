@@ -35,13 +35,13 @@ it('gets model hash information', function () {
             'model_id',
             'attribute_hash',
             'composite_hash',
-            'has_parents',
-            'parent_models',
+            'has_dependents',
+            'dependent_models',
             'updated_at',
         ])
         ->assertJson([
             'model_id' => $model->id,
-            'has_parents' => false,
+            'has_dependents' => false,
         ]);
 });
 
@@ -319,8 +319,8 @@ it('gets statistics', function () {
     $response->assertOk()
         ->assertJsonStructure([
             'total_hashes',
-            'models_without_parents',
-            'models_with_parents',
+            'models_without_dependents',
+            'models_with_dependents',
             'total_publishers',
             'active_publishers',
             'publishes_by_status',
@@ -336,8 +336,8 @@ it('gets model-specific statistics', function () {
     $response->assertOk()
         ->assertJsonStructure([
             'total_hashes',
-            'models_without_parents',
-            'models_with_parents',
+            'models_without_dependents',
+            'models_with_dependents',
             'total_publishers',
             'active_publishers',
             'publishes_by_status',

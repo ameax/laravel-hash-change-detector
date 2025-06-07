@@ -13,7 +13,7 @@ return new class extends Migration
         $hashesTable = config('laravel-hash-change-detector.tables.hashes', 'hashes');
         $publishersTable = config('laravel-hash-change-detector.tables.publishers', 'publishers');
         $publishesTable = config('laravel-hash-change-detector.tables.publishes', 'publishes');
-        $hashParentsTable = config('laravel-hash-change-detector.tables.hash_parents', 'hash_parents');
+        $hashDependentsTable = config('laravel-hash-change-detector.tables.hash_dependents', 'hash_dependents');
 
         // Create hashes table
         Schema::create($hashesTable, function (Blueprint $table) {
@@ -61,19 +61,19 @@ return new class extends Migration
             $table->index(['status', 'next_try']);
         });
 
-        // Create hash_parents table for tracking parent-child relationships
-        Schema::create($hashParentsTable, function (Blueprint $table) use ($hashesTable) {
+        // Create hash_dependents table for tracking which models depend on this hash
+        Schema::create($hashDependentsTable, function (Blueprint $table) use ($hashesTable) {
             $table->id();
-            $table->foreignId('child_hash_id')->constrained($hashesTable)->cascadeOnDelete();
-            $table->string('parent_model_type');
-            $table->unsignedBigInteger('parent_model_id');
+            $table->foreignId('hash_id')->constrained($hashesTable)->cascadeOnDelete();
+            $table->string('dependent_model_type');
+            $table->unsignedBigInteger('dependent_model_id');
             $table->string('relation_name')->nullable(); // Store which relation this came from
             $table->timestamps();
 
-            // Prevent duplicate parent-child relationships
-            $table->unique(['child_hash_id', 'parent_model_type', 'parent_model_id'], 'unique_parent_child');
-            // Index for finding all children of a parent
-            $table->index(['parent_model_type', 'parent_model_id'], 'parent_model_index');
+            // Prevent duplicate hash-dependent relationships
+            $table->unique(['hash_id', 'dependent_model_type', 'dependent_model_id'], 'unique_hash_dependent');
+            // Index for finding all dependents of a model
+            $table->index(['dependent_model_type', 'dependent_model_id'], 'dependent_model_index');
         });
     }
 
@@ -82,9 +82,9 @@ return new class extends Migration
         $hashesTable = config('laravel-hash-change-detector.tables.hashes', 'hashes');
         $publishersTable = config('laravel-hash-change-detector.tables.publishers', 'publishers');
         $publishesTable = config('laravel-hash-change-detector.tables.publishes', 'publishes');
-        $hashParentsTable = config('laravel-hash-change-detector.tables.hash_parents', 'hash_parents');
+        $hashDependentsTable = config('laravel-hash-change-detector.tables.hash_dependents', 'hash_dependents');
 
-        Schema::dropIfExists($hashParentsTable);
+        Schema::dropIfExists($hashDependentsTable);
         Schema::dropIfExists($publishesTable);
         Schema::dropIfExists($publishersTable);
         Schema::dropIfExists($hashesTable);

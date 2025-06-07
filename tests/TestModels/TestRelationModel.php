@@ -29,7 +29,7 @@ class TestRelationModel extends Model implements Hashable
         return ['key', 'value', 'order'];
     }
 
-    public function getHashableRelations(): array
+    public function getHashCompositeDependencies(): array
     {
         return [];
     }
@@ -40,9 +40,9 @@ class TestRelationModel extends Model implements Hashable
     }
 
     /**
-     * Get parent model relations that should be notified when this model changes.
+     * Get relations that should be notified when this model's hash changes.
      */
-    public function getParentModelRelations(): array
+    public function getHashRelationsToNotifyOnChange(): array
     {
         return ['testModel'];
     }
