@@ -4,6 +4,8 @@ All notable changes to `laravel-hash-change-detector` will be documented in this
 
 ## [Unreleased]
 
+## v1.2.1 - 2025-06-07
+
 ### Fixed
 
 - Fixed HasMany relationship notifications not updating dependent models
