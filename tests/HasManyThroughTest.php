@@ -81,7 +81,7 @@ it('updates country hash when a post through user changes', function () {
     // Force initial composite hash calculation including posts
     $country->load('posts');
     $country->updateHash();
-    
+
     // Get initial hash
     $initialHash = $country->getCurrentHash();
     $initialCompositeHash = $initialHash->composite_hash;
@@ -113,7 +113,7 @@ it('updates country hash when a post is added to a user', function () {
     // Force initial composite hash calculation
     $country->load('posts');
     $country->updateHash();
-    
+
     // Get initial hash
     $initialHash = $country->getCurrentHash();
     $initialCompositeHash = $initialHash->composite_hash;
@@ -208,7 +208,7 @@ it('does not update country hash when intermediate user changes', function () {
     // Force initial composite hash calculation
     $country->load('posts');
     $country->updateHash();
-    
+
     // Get initial hash
     $initialHash = $country->getCurrentHash();
     $initialCompositeHash = $initialHash->composite_hash;

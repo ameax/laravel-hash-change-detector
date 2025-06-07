@@ -41,7 +41,7 @@ interface Hashable
     /**
      * Get the parent model relations that should be notified when this model changes.
      * Return an array of relation names that point to parent models.
-     * 
+     *
      * @return array<string>
      */
     public function getParentModelRelations(): array;

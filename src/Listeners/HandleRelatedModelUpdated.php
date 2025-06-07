@@ -21,7 +21,7 @@ class HandleRelatedModelUpdated
         if (method_exists($updatedModel, 'getParentModelRelations')) {
             // Store parent references before deletion
             static $parentReferences = [];
-            
+
             if ($action === 'deleting') {
                 // Store parent references before the model is deleted
                 foreach ($updatedModel->getParentModelRelations() as $relationName) {
@@ -32,16 +32,16 @@ class HandleRelatedModelUpdated
                             $parent = $updatedModel;
                             foreach ($parts as $part) {
                                 $parent = $parent->$part;
-                                if (!$parent) {
+                                if (! $parent) {
                                     break;
                                 }
                             }
                         } else {
                             $parent = $updatedModel->$relationName;
                         }
-                        
+
                         if ($parent && $parent instanceof Hashable) {
-                            $modelKey = get_class($updatedModel) . ':' . $updatedModel->getKey();
+                            $modelKey = get_class($updatedModel).':'.$updatedModel->getKey();
                             $parentReferences[$modelKey][] = $parent;
                         }
                     } catch (\Exception $e) {
@@ -50,7 +50,7 @@ class HandleRelatedModelUpdated
                 }
             } elseif ($action === 'deleted') {
                 // Update parent hashes after deletion using stored references
-                $modelKey = get_class($updatedModel) . ':' . $updatedModel->getKey();
+                $modelKey = get_class($updatedModel).':'.$updatedModel->getKey();
                 if (isset($parentReferences[$modelKey])) {
                     foreach ($parentReferences[$modelKey] as $parent) {
                         $parent->load($parent->getHashableRelations());
@@ -68,14 +68,14 @@ class HandleRelatedModelUpdated
                             $parent = $updatedModel;
                             foreach ($parts as $part) {
                                 $parent = $parent->$part;
-                                if (!$parent) {
+                                if (! $parent) {
                                     break;
                                 }
                             }
                         } else {
                             $parent = $updatedModel->$relationName;
                         }
-                        
+
                         if ($parent && $parent instanceof Hashable) {
                             $parent->updateHash();
                         }

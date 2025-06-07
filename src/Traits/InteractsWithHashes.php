@@ -302,7 +302,7 @@ trait InteractsWithHashes
      * Override this method in your model to specify which relations point to parent models.
      * For example, a Comment model might return ['post', 'user'] if changes to comments
      * should trigger hash updates on both the post and user.
-     * 
+     *
      * @return array<string>
      */
     public function getParentModelRelations(): array

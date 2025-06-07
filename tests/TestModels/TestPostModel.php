@@ -8,7 +8,6 @@ use ameax\HashChangeDetector\Contracts\Hashable;
 use ameax\HashChangeDetector\Traits\InteractsWithHashes;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Support\Collection;
 
 class TestPostModel extends Model implements Hashable
 {
