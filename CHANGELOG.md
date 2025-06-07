@@ -4,6 +4,14 @@ All notable changes to `laravel-hash-change-detector` will be documented in this
 
 ## [Unreleased]
 
+### Fixed
+
+- Fixed HasMany relationship notifications not updating dependent models
+  - Added proper support for collection relationships (HasMany, BelongsToMany)
+  - Force fresh load of relations to ensure accurate dependent tracking
+  - Update dependent references even when hash hasn't changed
+  - Added `updateHash()` method to Hashable interface
+
 ## v1.2.0 - 2025-06-07
 
 ### Added
