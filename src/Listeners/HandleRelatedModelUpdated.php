@@ -10,12 +10,65 @@ use ameax\HashChangeDetector\Events\RelatedModelUpdated;
 class HandleRelatedModelUpdated
 {
     /**
+     * Stack to track models currently being processed to prevent infinite loops.
+     * 
+     * @var array<string, bool>
+     */
+    protected static array $processingStack = [];
+    
+    /**
+     * Current depth of the update chain.
+     * 
+     * @var int
+     */
+    protected static int $currentDepth = 0;
+    
+    /**
+     * Maximum allowed depth for update chains.
+     * 
+     * @var int
+     */
+    protected const MAX_DEPTH = 10;
+
+    /**
      * Handle the event.
      */
     public function handle(RelatedModelUpdated $event): void
     {
         $updatedModel = $event->model;
         $action = $event->action;
+        
+        // Create a unique key for this model
+        $modelKey = get_class($updatedModel) . ':' . $updatedModel->getKey();
+        
+        // Skip if this model is already being processed (prevents infinite loops)
+        if (isset(self::$processingStack[$modelKey]) && self::$processingStack[$modelKey]) {
+            return;
+        }
+        
+        // Check depth limit to prevent runaway recursion
+        if (self::$currentDepth >= self::MAX_DEPTH) {
+            return;
+        }
+        
+        // Mark this model as being processed
+        self::$processingStack[$modelKey] = true;
+        self::$currentDepth++;
+        
+        try {
+            $this->processModelUpdate($updatedModel, $action);
+        } finally {
+            // Always remove from processing stack and decrement depth when done
+            unset(self::$processingStack[$modelKey]);
+            self::$currentDepth--;
+        }
+    }
+    
+    /**
+     * Process the model update.
+     */
+    protected function processModelUpdate($updatedModel, $action): void
+    {
 
         // Get dependent models from the updated model's getHashRelationsToNotifyOnChange() method
         if (method_exists($updatedModel, 'getHashRelationsToNotifyOnChange')) {
@@ -117,5 +170,14 @@ class HandleRelatedModelUpdated
                 }
             }
         }
+    }
+    
+    /**
+     * Clear the processing stack (useful for testing).
+     */
+    public static function clearProcessingStack(): void
+    {
+        self::$processingStack = [];
+        self::$currentDepth = 0;
     }
 }

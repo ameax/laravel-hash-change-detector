@@ -533,6 +533,43 @@ public function getHashRelationsToNotifyOnChange(): array
 
 The package automatically handles both single models and collections, updating all dependent models when changes occur.
 
+### Circular Dependency Protection
+
+The package includes built-in protection against infinite loops in circular relationships:
+
+```php
+// This scenario is automatically handled without infinite loops
+class User extends Model implements Hashable
+{
+    use InteractsWithHashes;
+    
+    public function getHashRelationsToNotifyOnChange(): array
+    {
+        return ['posts']; // When user changes, notify all posts
+    }
+}
+
+class Post extends Model implements Hashable
+{
+    use InteractsWithHashes;
+    
+    public function getHashRelationsToNotifyOnChange(): array
+    {
+        return ['user']; // When post changes, notify user
+    }
+}
+```
+
+**Protection Mechanisms:**
+1. **Cycle Detection**: Models currently being processed are tracked to prevent re-entry
+2. **Depth Limiting**: Maximum update chain depth of 10 levels
+3. **Automatic Recovery**: Processing stack is cleared after each update chain
+
+**Best Practices:**
+- Design your relationships to minimize circular dependencies
+- Use one-way notifications where possible (child → parent)
+- Consider using composite dependencies instead of bidirectional notifications
+
 ### Custom Hash Algorithm
 
 In your config file:
