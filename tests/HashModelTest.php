@@ -116,7 +116,7 @@ it('tracks parent-child relationships correctly', function () {
     foreach ($children as $child) {
         $childHash = $child->getCurrentHash();
         $parents = $childHash->parents;
-        
+
         expect($parents)->toHaveCount(1);
         expect($parents->first()->parent_model_type)->toBe(TestModel::class);
         expect($parents->first()->parent_model_id)->toBe($parent->id);

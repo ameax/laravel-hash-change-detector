@@ -69,7 +69,7 @@ return new class extends Migration
             $table->unsignedBigInteger('parent_model_id');
             $table->string('relation_name')->nullable(); // Store which relation this came from
             $table->timestamps();
-            
+
             // Prevent duplicate parent-child relationships
             $table->unique(['child_hash_id', 'parent_model_type', 'parent_model_id'], 'unique_parent_child');
             // Index for finding all children of a parent

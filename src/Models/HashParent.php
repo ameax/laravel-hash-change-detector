@@ -39,11 +39,12 @@ class HashParent extends Model
      */
     public function parent(): ?Model
     {
-        if (!$this->getAttribute('parent_model_type') || !$this->getAttribute('parent_model_id')) {
+        if (! $this->getAttribute('parent_model_type') || ! $this->getAttribute('parent_model_id')) {
             return null;
         }
 
         $modelClass = $this->getAttribute('parent_model_type');
+
         return $modelClass::find($this->getAttribute('parent_model_id'));
     }
 }

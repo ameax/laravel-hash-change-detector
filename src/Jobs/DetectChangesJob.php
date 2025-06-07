@@ -231,7 +231,7 @@ class DetectChangesJob implements ShouldQueue
 
             // Find all parent models that need updating
             $parents = $hash->parents()->get();
-            
+
             foreach ($parents as $parentRef) {
                 /** @var HashParent $parentRef */
                 $parentModel = $parentRef->parent();

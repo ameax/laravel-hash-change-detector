@@ -53,7 +53,7 @@ it('stores parent model class name in hash_parents table', function () {
 
     // Check parent model type storage in hash_parents table
     expect($parentRefs)->toHaveCount(1);
-    
+
     $parentRef = $parentRefs->first();
     expect($parentRef->parent_model_type)->toBe(TestModel::class);
     expect($parentRef->parent_model_type)->toBe('ameax\HashChangeDetector\Tests\TestModels\TestModel');

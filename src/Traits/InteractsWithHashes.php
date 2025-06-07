@@ -322,7 +322,7 @@ trait InteractsWithHashes
         foreach ($this->getParentModelRelations() as $relationName) {
             try {
                 $parent = $this->resolveParentModel($relationName);
-                
+
                 if ($parent && $parent instanceof Model) {
                     HashParent::create([
                         'child_hash_id' => $hash->id,
@@ -347,17 +347,17 @@ trait InteractsWithHashes
         if (str_contains($relationName, '.')) {
             $parts = explode('.', $relationName);
             $model = $this;
-            
+
             foreach ($parts as $part) {
                 $model = $model->$part;
-                if (!$model) {
+                if (! $model) {
                     return null;
                 }
             }
-            
+
             return $model;
         }
-        
+
         // Simple relation
         return $this->$relationName;
     }
