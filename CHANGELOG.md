@@ -2,6 +2,24 @@
 
 All notable changes to `laravel-hash-change-detector` will be documented in this file.
 
+## [Unreleased]
+
+### Added
+
+- Automatic parent model hash regeneration when related models change
+  - New `getParentModelRelations()` method in Hashable interface
+  - Support for nested relations (e.g., 'user.country') to notify indirect parents
+  - Proper handling of model deletion events
+
+### Changed
+
+- Simplified parent model notification system - models now explicitly declare parent relations
+- Improved HandleRelatedModelUpdated listener to use the new parent relations method
+
+### Removed
+
+- Deprecated `getParentModels()` method in favor of `getParentModelRelations()`
+
 ## v1.0.1 - 2025-05-30
 
 **Full Changelog**: https://github.com/ameax/laravel-hash-change-detector/commits/v1.0.1
@@ -9,8 +27,6 @@ All notable changes to `laravel-hash-change-detector` will be documented in this
 ## v1.0.0 - 2025-05-29
 
 **Full Changelog**: https://github.com/ameax/laravel-hash-change-detector/commits/v1.0.0
-
-## [Unreleased]
 
 ### Added
 
