@@ -41,4 +41,13 @@ class TestUserModel extends Model implements Hashable
     {
         return [];
     }
+
+    /**
+     * Get relations that should be notified when this user changes.
+     * All posts should be notified since they include the user in their composite hash.
+     */
+    public function getHashRelationsToNotifyOnChange(): array
+    {
+        return ['posts'];
+    }
 }

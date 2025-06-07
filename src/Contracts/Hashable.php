@@ -45,4 +45,9 @@ interface Hashable
      * @return array<string>
      */
     public function getHashRelationsToNotifyOnChange(): array;
+
+    /**
+     * Update the hash for this model.
+     */
+    public function updateHash(): void;
 }

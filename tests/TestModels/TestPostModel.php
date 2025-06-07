@@ -38,7 +38,7 @@ class TestPostModel extends Model implements Hashable
 
     public function getHashCompositeDependencies(): array
     {
-        return [];
+        return ['user'];
     }
 
     /**

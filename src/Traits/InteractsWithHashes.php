@@ -136,6 +136,10 @@ trait InteractsWithHashes
 
             // Fire event for hash change
             event(new HashChanged($this, $attributeHash, $compositeHash));
+        } else {
+            // Even if hash hasn't changed, we should update dependent references
+            // because the dependents themselves may have changed
+            $this->updateDependentReferences($currentHash);
         }
     }
 
@@ -321,15 +325,21 @@ trait InteractsWithHashes
         // Add dependent references based on getHashRelationsToNotifyOnChange()
         foreach ($this->getHashRelationsToNotifyOnChange() as $relationName) {
             try {
-                $dependent = $this->resolveDependentModel($relationName);
+                // Unset relation to force fresh load
+                $this->unsetRelation($relationName);
+                $this->load($relationName);
 
-                if ($dependent && $dependent instanceof Model) {
-                    HashDependent::create([
-                        'hash_id' => $hash->id,
-                        'dependent_model_type' => get_class($dependent),
-                        'dependent_model_id' => $dependent->getKey(),
-                        'relation_name' => $relationName,
-                    ]);
+                $dependents = $this->resolveDependentModels($relationName);
+
+                foreach ($dependents as $dependent) {
+                    if ($dependent instanceof Model) {
+                        HashDependent::create([
+                            'hash_id' => $hash->id,
+                            'dependent_model_type' => get_class($dependent),
+                            'dependent_model_id' => $dependent->getKey(),
+                            'relation_name' => $relationName,
+                        ]);
+                    }
                 }
             } catch (\Exception $e) {
                 // Skip if relation doesn't exist or can't be loaded
@@ -339,27 +349,46 @@ trait InteractsWithHashes
     }
 
     /**
-     * Resolve a dependent model from a relation name (supports nested relations).
+     * Resolve dependent models from a relation name (supports nested relations and collections).
+     *
+     * @return array<Model>
      */
-    protected function resolveDependentModel(string $relationName): ?Model
+    protected function resolveDependentModels(string $relationName): array
     {
+        $result = null;
+
         // Handle nested relations (e.g., 'user.country')
         if (str_contains($relationName, '.')) {
             $parts = explode('.', $relationName);
-            $model = $this;
+            $current = $this;
 
             foreach ($parts as $part) {
-                $model = $model->$part;
-                if (! $model) {
-                    return null;
+                $current = $current->$part;
+                if (! $current) {
+                    return [];
                 }
             }
 
-            return $model;
+            $result = $current;
+        } else {
+            // Simple relation
+            $result = $this->$relationName;
         }
 
-        // Simple relation
-        return $this->$relationName;
+        // Convert to array, handling both single models and collections
+        if (! $result) {
+            return [];
+        }
+
+        if ($result instanceof \Illuminate\Database\Eloquent\Collection) {
+            return $result->all();
+        }
+
+        if ($result instanceof Model) {
+            return [$result];
+        }
+
+        return [];
     }
 
     /**

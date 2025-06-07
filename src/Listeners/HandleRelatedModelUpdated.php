@@ -19,6 +19,7 @@ class HandleRelatedModelUpdated
 
         // Get dependent models from the updated model's getHashRelationsToNotifyOnChange() method
         if (method_exists($updatedModel, 'getHashRelationsToNotifyOnChange')) {
+            // Process dependent models based on action
             // Store parent references before deletion
             static $dependentReferences = [];
 
@@ -37,12 +38,26 @@ class HandleRelatedModelUpdated
                                 }
                             }
                         } else {
+                            // Unset the relation to force a fresh load
+                            $updatedModel->unsetRelation($relationName);
+                            $updatedModel->load($relationName);
                             $dependent = $updatedModel->$relationName;
                         }
 
-                        if ($dependent && $dependent instanceof Hashable) {
+                        if ($dependent) {
                             $modelKey = get_class($updatedModel).':'.$updatedModel->getKey();
-                            $dependentReferences[$modelKey][] = $dependent;
+
+                            // Handle collections (HasMany, BelongsToMany, etc.)
+                            if ($dependent instanceof \Illuminate\Database\Eloquent\Collection) {
+                                foreach ($dependent as $model) {
+                                    if ($model instanceof Hashable) {
+                                        $dependentReferences[$modelKey][] = $model;
+                                    }
+                                }
+                            } elseif ($dependent instanceof Hashable) {
+                                // Handle single model (BelongsTo, HasOne, etc.)
+                                $dependentReferences[$modelKey][] = $dependent;
+                            }
                         }
                     } catch (\Exception $e) {
                         continue;
@@ -73,11 +88,28 @@ class HandleRelatedModelUpdated
                                 }
                             }
                         } else {
+                            // For HasMany and other collection relationships, we need to explicitly load them
+                            // Unset the relation to force a fresh load
+                            $updatedModel->unsetRelation($relationName);
+                            $updatedModel->load($relationName);
                             $dependent = $updatedModel->$relationName;
+
                         }
 
-                        if ($dependent && $dependent instanceof Hashable) {
-                            $dependent->updateHash();
+                        if ($dependent) {
+                            // Handle collections (HasMany, BelongsToMany, etc.)
+                            if ($dependent instanceof \Illuminate\Database\Eloquent\Collection) {
+                                // Process each model in the collection
+                                foreach ($dependent as $model) {
+                                    if ($model instanceof Hashable) {
+                                        $model->updateHash();
+                                    }
+                                }
+                            } elseif ($dependent instanceof Hashable) {
+                                // Handle single model (BelongsTo, HasOne, etc.)
+                                // Update single model
+                                $dependent->updateHash();
+                            }
                         }
                     } catch (\Exception $e) {
                         continue;
