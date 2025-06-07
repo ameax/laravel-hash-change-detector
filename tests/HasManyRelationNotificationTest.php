@@ -70,7 +70,6 @@ it('notifies all posts when user changes', function () {
     $post2->refresh();
     $post3->refresh();
 
-
     expect($post1->getCurrentHash()->composite_hash)->not->toBe($originalHash1);
     expect($post2->getCurrentHash()->composite_hash)->not->toBe($originalHash2);
     expect($post3->getCurrentHash()->composite_hash)->not->toBe($originalHash3);
