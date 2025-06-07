@@ -30,8 +30,6 @@ it('creates hash when model is created', function () {
     // Attributes are sorted alphabetically: active, description, name, price
     expect($hash->attribute_hash)->toBe(md5('1|Test Description|Test Product|99.99'));
     expect($hash->composite_hash)->toBe(md5($hash->attribute_hash));
-    expect($hash->main_model_type)->toBeNull();
-    expect($hash->main_model_id)->toBeNull();
 
     // Check event was fired
     Event::assertDispatched(HashChanged::class, function ($event) use ($model, $hash) {

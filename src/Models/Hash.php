@@ -14,13 +14,12 @@ use Illuminate\Database\Eloquent\Relations\MorphTo;
  * @property int $hashable_id
  * @property string $attribute_hash
  * @property string|null $composite_hash
- * @property string|null $main_model_type
- * @property int|null $main_model_id
  * @property \Illuminate\Support\Carbon $created_at
  * @property \Illuminate\Support\Carbon $updated_at
  * @property-read \Illuminate\Database\Eloquent\Model $hashable
- * @property-read \Illuminate\Database\Eloquent\Model|null $mainModel
  * @property-read \Illuminate\Database\Eloquent\Collection<int, \ameax\HashChangeDetector\Models\Publish> $publishes
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \ameax\HashChangeDetector\Models\HashParent> $parents
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \ameax\HashChangeDetector\Models\HashParent> $children
  */
 class Hash extends Model
 {
@@ -29,8 +28,6 @@ class Hash extends Model
         'hashable_id',
         'attribute_hash',
         'composite_hash',
-        'main_model_type',
-        'main_model_id',
     ];
 
     public function __construct(array $attributes = [])
@@ -44,15 +41,21 @@ class Hash extends Model
         return $this->morphTo();
     }
 
-    public function mainModel(): MorphTo
+    /**
+     * Get parent relationships for this hash.
+     */
+    public function parents(): HasMany
     {
-        return $this->morphTo('mainModel', 'main_model_type', 'main_model_id');
+        return $this->hasMany(HashParent::class, 'child_hash_id');
     }
 
-    public function relatedHashes(): HasMany
+    /**
+     * Get child relationships where this model is the parent.
+     */
+    public function children(): HasMany
     {
-        return $this->hasMany(Hash::class, 'main_model_id', 'hashable_id')
-            ->where('main_model_type', $this->hashable_type);
+        return $this->hasMany(HashParent::class, 'parent_model_id', 'hashable_id')
+            ->where('parent_model_type', $this->hashable_type);
     }
 
     public function publishes(): HasMany
@@ -60,9 +63,12 @@ class Hash extends Model
         return $this->hasMany(Publish::class);
     }
 
-    public function isMainModel(): bool
+    /**
+     * Check if this hash has any parent models.
+     */
+    public function hasParents(): bool
     {
-        return is_null($this->main_model_type);
+        return $this->parents()->exists();
     }
 
     public function hasChanged(string $newHash): bool

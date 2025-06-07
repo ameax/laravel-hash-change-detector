@@ -6,7 +6,7 @@ use ameax\HashChangeDetector\Models\Hash;
 use ameax\HashChangeDetector\Tests\TestModels\TestModel;
 use ameax\HashChangeDetector\Tests\TestModels\TestRelationModel;
 
-it('identifies main model correctly', function () {
+it('identifies model without parents correctly', function () {
     $model = TestModel::create([
         'name' => 'Test Product',
         'description' => 'Test Description',
@@ -16,10 +16,10 @@ it('identifies main model correctly', function () {
 
     $hash = $model->getCurrentHash();
 
-    expect($hash->isMainModel())->toBeTrue();
+    expect($hash->hasParents())->toBeFalse();
 });
 
-it('identifies related model correctly', function () {
+it('identifies model with parents correctly', function () {
     $parent = TestModel::create([
         'name' => 'Parent Model',
         'description' => 'Test Description',
@@ -33,9 +33,13 @@ it('identifies related model correctly', function () {
         'key' => 'childkey',
     ]);
 
+    // Force parent to load and update hash (which will create parent references)
+    $parent->load('testRelations');
+    $parent->updateHash();
+
     $childHash = $child->getCurrentHash();
 
-    expect($childHash->isMainModel())->toBeFalse();
+    expect($childHash->hasParents())->toBeTrue();
 });
 
 it('detects attribute hash changes', function () {
@@ -90,7 +94,7 @@ it('detects composite hash changes', function () {
     expect($originalHash->hasCompositeChanged($newComposite))->toBeTrue();
 });
 
-it('loads related hashes relationship', function () {
+it('tracks parent-child relationships correctly', function () {
     $parent = TestModel::create([
         'name' => 'Parent Model',
         'description' => 'Test Description',
@@ -103,11 +107,20 @@ it('loads related hashes relationship', function () {
         TestRelationModel::create(['test_model_id' => $parent->id, 'value' => 'Child 2', 'key' => 'key2']),
     ]);
 
-    $parentHash = $parent->getCurrentHash();
-    $relatedHashes = $parentHash->relatedHashes;
+    // Each child should update its hash and set parent references
+    foreach ($children as $child) {
+        $child->updateHash();
+    }
 
-    expect($relatedHashes)->toHaveCount(2);
-    expect($relatedHashes->pluck('hashable_id')->sort()->values())->toEqual($children->pluck('id')->sort()->values());
+    // Check that children have parent references
+    foreach ($children as $child) {
+        $childHash = $child->getCurrentHash();
+        $parents = $childHash->parents;
+        
+        expect($parents)->toHaveCount(1);
+        expect($parents->first()->parent_model_type)->toBe(TestModel::class);
+        expect($parents->first()->parent_model_id)->toBe($parent->id);
+    }
 });
 
 it('creates hash with empty string for model without hashable attributes', function () {

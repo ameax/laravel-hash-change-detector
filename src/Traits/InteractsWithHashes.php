@@ -8,11 +8,13 @@ use ameax\HashChangeDetector\Events\HashChanged;
 use ameax\HashChangeDetector\Events\HashUpdatedWithoutPublishing;
 use ameax\HashChangeDetector\Events\RelatedModelUpdated;
 use ameax\HashChangeDetector\Models\Hash;
+use ameax\HashChangeDetector\Models\HashParent;
 use ameax\HashChangeDetector\Models\Publish;
 use ameax\HashChangeDetector\Models\Publisher;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\MorphOne;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 
 trait InteractsWithHashes
 {
@@ -124,10 +126,13 @@ trait InteractsWithHashes
             $currentHash->attribute_hash !== $attributeHash ||
             $currentHash->composite_hash !== $compositeHash) {
 
-            $this->hash()->updateOrCreate([], [
+            $hash = $this->hash()->updateOrCreate([], [
                 'attribute_hash' => $attributeHash,
                 'composite_hash' => $compositeHash,
             ]);
+
+            // Update parent references
+            $this->updateParentReferences($hash);
 
             // Fire event for hash change
             event(new HashChanged($this, $attributeHash, $compositeHash));
@@ -156,6 +161,9 @@ trait InteractsWithHashes
                 'attribute_hash' => $attributeHash,
                 'composite_hash' => $compositeHash,
             ]);
+
+            // Update parent references
+            $this->updateParentReferences($hash);
 
             // Mark specified publishers as synced
             $this->markPublishersAsSynced($hash, $syncedPublishers);
@@ -266,22 +274,12 @@ trait InteractsWithHashes
 
     /**
      * Ensure related model hash has parent reference.
+     * With the new parent tracking system, this is handled by updateParentReferences.
      */
     protected function ensureRelatedHashHasParentReference(Model $relatedModel): void
     {
-        if (! $relatedModel || ! method_exists($relatedModel, 'getCurrentHash')) {
-            return;
-        }
-
-        // Skip setting parent reference for models that already have a different parent
-        // This prevents overwriting the correct parent (e.g., posts belong to users, not countries)
-        $hash = $relatedModel->getCurrentHash();
-        if ($hash && (! $hash->main_model_type || ! $hash->main_model_id)) {
-            $hash->update([
-                'main_model_type' => get_class($this),
-                'main_model_id' => $this->getKey(),
-            ]);
-        }
+        // This method is now a no-op as parent references are tracked
+        // via the hash_parents table when models update their own hashes
     }
 
     /**
@@ -308,6 +306,60 @@ trait InteractsWithHashes
     public function getParentModelRelations(): array
     {
         return [];
+    }
+
+    /**
+     * Update parent references in the hash_parents table.
+     */
+    protected function updateParentReferences(Hash $hash): void
+    {
+        // Clear existing parent references
+        DB::table(config('hash-change-detector.tables.hash_parents', 'hash_parents'))
+            ->where('child_hash_id', $hash->id)
+            ->delete();
+
+        // Add parent references based on getParentModelRelations()
+        foreach ($this->getParentModelRelations() as $relationName) {
+            try {
+                $parent = $this->resolveParentModel($relationName);
+                
+                if ($parent && $parent instanceof Model) {
+                    HashParent::create([
+                        'child_hash_id' => $hash->id,
+                        'parent_model_type' => get_class($parent),
+                        'parent_model_id' => $parent->getKey(),
+                        'relation_name' => $relationName,
+                    ]);
+                }
+            } catch (\Exception $e) {
+                // Skip if relation doesn't exist or can't be loaded
+                continue;
+            }
+        }
+    }
+
+    /**
+     * Resolve a parent model from a relation name (supports nested relations).
+     */
+    protected function resolveParentModel(string $relationName): ?Model
+    {
+        // Handle nested relations (e.g., 'user.country')
+        if (str_contains($relationName, '.')) {
+            $parts = explode('.', $relationName);
+            $model = $this;
+            
+            foreach ($parts as $part) {
+                $model = $model->$part;
+                if (!$model) {
+                    return null;
+                }
+            }
+            
+            return $model;
+        }
+        
+        // Simple relation
+        return $this->$relationName;
     }
 
     /**

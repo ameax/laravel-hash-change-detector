@@ -17,6 +17,7 @@ return [
         'hashes' => 'hashes',
         'publishers' => 'publishers',
         'publishes' => 'publishes',
+        'hash_parents' => 'hash_parents',
     ],
 
     /*

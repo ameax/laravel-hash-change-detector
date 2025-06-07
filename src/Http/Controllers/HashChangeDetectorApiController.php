@@ -95,15 +95,17 @@ class HashChangeDetectorApiController extends Controller
                         new OA\Property(property: 'model_id', type: 'integer', example: 1),
                         new OA\Property(property: 'attribute_hash', type: 'string', example: 'a1b2c3d4e5f6...'),
                         new OA\Property(property: 'composite_hash', type: 'string', nullable: true, example: 'f6e5d4c3b2a1...'),
-                        new OA\Property(property: 'is_main_model', type: 'boolean', example: true),
+                        new OA\Property(property: 'has_parents', type: 'boolean', example: false),
                         new OA\Property(
-                            property: 'parent_model',
-                            type: 'object',
-                            nullable: true,
-                            properties: [
-                                new OA\Property(property: 'type', type: 'string'),
-                                new OA\Property(property: 'id', type: 'integer'),
-                            ]
+                            property: 'parent_models',
+                            type: 'array',
+                            items: new OA\Items(
+                                properties: [
+                                    new OA\Property(property: 'type', type: 'string'),
+                                    new OA\Property(property: 'id', type: 'integer'),
+                                    new OA\Property(property: 'relation', type: 'string'),
+                                ]
+                            )
                         ),
                         new OA\Property(property: 'updated_at', type: 'string', format: 'date-time', example: '2024-01-01T00:00:00.000000Z'),
                     ]
@@ -141,11 +143,14 @@ class HashChangeDetectorApiController extends Controller
             'model_id' => $modelId,
             'attribute_hash' => $hash->attribute_hash,
             'composite_hash' => $hash->composite_hash,
-            'is_main_model' => $hash->isMainModel(),
-            'parent_model' => $hash->main_model_type ? [
-                'type' => $hash->main_model_type,
-                'id' => $hash->main_model_id,
-            ] : null,
+            'has_parents' => $hash->hasParents(),
+            'parent_models' => $hash->parents->map(function ($parent) {
+                return [
+                    'type' => $parent->parent_model_type,
+                    'id' => $parent->parent_model_id,
+                    'relation' => $parent->relation_name,
+                ];
+            }),
             'updated_at' => $hash->updated_at->toIso8601String(),
         ]);
     }
@@ -596,8 +601,8 @@ class HashChangeDetectorApiController extends Controller
                 content: new OA\JsonContent(
                     properties: [
                         new OA\Property(property: 'total_hashes', type: 'integer'),
-                        new OA\Property(property: 'main_models', type: 'integer'),
-                        new OA\Property(property: 'related_models', type: 'integer'),
+                        new OA\Property(property: 'models_without_parents', type: 'integer'),
+                        new OA\Property(property: 'models_with_parents', type: 'integer'),
                         new OA\Property(property: 'total_publishers', type: 'integer'),
                         new OA\Property(property: 'active_publishers', type: 'integer'),
                         new OA\Property(
@@ -624,8 +629,8 @@ class HashChangeDetectorApiController extends Controller
     {
         $stats = [
             'total_hashes' => Hash::count(),
-            'main_models' => Hash::whereNull('main_model_type')->count(),
-            'related_models' => Hash::whereNotNull('main_model_type')->count(),
+            'models_without_parents' => Hash::whereDoesntHave('parents')->count(),
+            'models_with_parents' => Hash::whereHas('parents')->count(),
             'total_publishers' => Publisher::count(),
             'active_publishers' => Publisher::where('status', 'active')->count(),
             'publishes_by_status' => Publish::select('status', DB::raw('count(*) as count'))

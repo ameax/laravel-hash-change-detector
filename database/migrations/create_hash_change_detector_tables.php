@@ -13,6 +13,7 @@ return new class extends Migration
         $hashesTable = config('laravel-hash-change-detector.tables.hashes', 'hashes');
         $publishersTable = config('laravel-hash-change-detector.tables.publishers', 'publishers');
         $publishesTable = config('laravel-hash-change-detector.tables.publishes', 'publishes');
+        $hashParentsTable = config('laravel-hash-change-detector.tables.hash_parents', 'hash_parents');
 
         // Create hashes table
         Schema::create($hashesTable, function (Blueprint $table) {
@@ -20,12 +21,8 @@ return new class extends Migration
             $table->morphs('hashable');
             $table->string('attribute_hash', 32);
             $table->string('composite_hash', 32)->nullable();
-            $table->string('main_model_type')->nullable();
-            $table->unsignedBigInteger('main_model_id')->nullable();
             $table->timestamps();
 
-            // Index for finding related hashes of a main model
-            $table->index(['main_model_type', 'main_model_id']);
             // Unique index to prevent duplicate hash records
             $table->unique(['hashable_type', 'hashable_id']);
         });
@@ -63,6 +60,21 @@ return new class extends Migration
             // Index for finding records that need processing
             $table->index(['status', 'next_try']);
         });
+
+        // Create hash_parents table for tracking parent-child relationships
+        Schema::create($hashParentsTable, function (Blueprint $table) use ($hashesTable) {
+            $table->id();
+            $table->foreignId('child_hash_id')->constrained($hashesTable)->cascadeOnDelete();
+            $table->string('parent_model_type');
+            $table->unsignedBigInteger('parent_model_id');
+            $table->string('relation_name')->nullable(); // Store which relation this came from
+            $table->timestamps();
+            
+            // Prevent duplicate parent-child relationships
+            $table->unique(['child_hash_id', 'parent_model_type', 'parent_model_id'], 'unique_parent_child');
+            // Index for finding all children of a parent
+            $table->index(['parent_model_type', 'parent_model_id'], 'parent_model_index');
+        });
     }
 
     public function down(): void
@@ -70,7 +82,9 @@ return new class extends Migration
         $hashesTable = config('laravel-hash-change-detector.tables.hashes', 'hashes');
         $publishersTable = config('laravel-hash-change-detector.tables.publishers', 'publishers');
         $publishesTable = config('laravel-hash-change-detector.tables.publishes', 'publishes');
+        $hashParentsTable = config('laravel-hash-change-detector.tables.hash_parents', 'hash_parents');
 
+        Schema::dropIfExists($hashParentsTable);
         Schema::dropIfExists($publishesTable);
         Schema::dropIfExists($publishersTable);
         Schema::dropIfExists($hashesTable);

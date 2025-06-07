@@ -47,9 +47,8 @@ class DetectChangesJob implements ShouldQueue
      */
     protected function detectChangesForAllModels(): void
     {
-        // Get all distinct model types that are main models (not related)
-        $modelTypes = Hash::whereNull('main_model_type')
-            ->distinct()
+        // Get all distinct model types from hashes
+        $modelTypes = Hash::distinct()
             ->pluck('hashable_type');
 
         foreach ($modelTypes as $modelType) {
@@ -229,23 +228,25 @@ class DetectChangesJob implements ShouldQueue
                 continue;
             }
 
-            // Check if this is a related model (has parent reference)
-            if ($hash->main_model_type && $hash->main_model_id) {
-                // This is a related model - notify parent and delete hash
-                $parentModel = $hash->main_model_type::find($hash->main_model_id);
+            // Find all parent models that need updating
+            $parents = $hash->parents()->get();
+            
+            foreach ($parents as $parentRef) {
+                $parentModel = $parentRef->parent();
                 if ($parentModel && method_exists($parentModel, 'updateHash')) {
+                    // Reload relations to ensure fresh data
+                    if (method_exists($parentModel, 'getHashableRelations')) {
+                        $parentModel->load($parentModel->getHashableRelations());
+                    }
                     $parentModel->updateHash();
                 }
-
-                // Delete the orphaned hash
-                $hash->delete();
-            } else {
-                // This is a parent model - fire event before deleting
-                event(new HashableModelDeleted($hash, $modelClass, $hash->hashable_id));
-
-                // Delete the hash and any related publish records
-                $this->cleanupDeletedModel($hash);
             }
+
+            // Fire deletion event
+            event(new HashableModelDeleted($hash, $modelClass, $hash->hashable_id));
+
+            // Delete the hash and any related publish records
+            $this->cleanupDeletedModel($hash);
         }
     }
 

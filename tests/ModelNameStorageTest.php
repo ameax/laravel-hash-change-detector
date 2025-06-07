@@ -30,7 +30,7 @@ it('stores full model class name in hashable_type field', function () {
     expect($rawHash->hashable_type)->toBe('ameax\HashChangeDetector\Tests\TestModels\TestModel');
 });
 
-it('stores parent model class name in main_model_type field', function () {
+it('stores parent model class name in hash_parents table', function () {
     $parent = TestModel::create([
         'name' => 'Parent Model',
         'description' => 'Parent',
@@ -45,16 +45,20 @@ it('stores parent model class name in main_model_type field', function () {
         'order' => 1,
     ]);
 
-    // Force parent relationship to be stored
-    $parent->load('testRelations');
-    $parent->updateHash();
+    // Update child hash which will store parent references
+    $child->updateHash();
 
     $childHash = $child->getCurrentHash();
+    $parentRefs = $childHash->parents;
 
-    // Check parent model type storage
-    expect($childHash->main_model_type)->toBe(TestModel::class);
-    expect($childHash->main_model_type)->toBe('ameax\HashChangeDetector\Tests\TestModels\TestModel');
-    expect($childHash->main_model_id)->toBe($parent->id);
+    // Check parent model type storage in hash_parents table
+    expect($parentRefs)->toHaveCount(1);
+    
+    $parentRef = $parentRefs->first();
+    expect($parentRef->parent_model_type)->toBe(TestModel::class);
+    expect($parentRef->parent_model_type)->toBe('ameax\HashChangeDetector\Tests\TestModels\TestModel');
+    expect($parentRef->parent_model_id)->toBe($parent->id);
+    expect($parentRef->relation_name)->toBe('testModel');
 });
 
 it('uses full class name in direct database detection queries', function () {

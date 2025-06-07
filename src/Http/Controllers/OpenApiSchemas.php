@@ -21,8 +21,6 @@ use OpenApi\Attributes as OA;
         new OA\Property(property: 'hashable_id', type: 'integer', description: 'Model ID'),
         new OA\Property(property: 'attribute_hash', type: 'string', description: 'Hash of model attributes'),
         new OA\Property(property: 'composite_hash', type: 'string', nullable: true, description: 'Combined hash including relations'),
-        new OA\Property(property: 'main_model_type', type: 'string', nullable: true, description: 'Parent model type if this is a related model'),
-        new OA\Property(property: 'main_model_id', type: 'integer', nullable: true, description: 'Parent model ID if this is a related model'),
         new OA\Property(property: 'created_at', type: 'string', format: 'date-time'),
         new OA\Property(property: 'updated_at', type: 'string', format: 'date-time'),
     ]
