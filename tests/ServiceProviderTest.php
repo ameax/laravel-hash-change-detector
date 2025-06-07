@@ -49,7 +49,7 @@ it('resolves facade to correct instance', function () {
 
 it('loads migrations in test environment', function () {
     // Check that the migration file exists in the expected location
-    $migrationPath = __DIR__.'/../database/migrations/0000_00_00_000000_create_hash_change_detector_tables.php';
+    $migrationPath = __DIR__.'/../database/migrations/create_hash_change_detector_tables.php';
     expect(file_exists($migrationPath))->toBeTrue();
 
     // Check that tables are created (which proves migrations are loaded)

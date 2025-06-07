@@ -186,9 +186,10 @@ it('updates parent composite hash when related model is updated', function () {
     $originalComposite = $model->getCurrentHash()->composite_hash;
     Event::fake([HashChanged::class]); // Reset event fake
 
-    // Update related model
+    // Update related model - this should automatically trigger parent hash update
     $relation->update(['value' => 'green']);
 
+    // No manual updateHash() call needed - it should happen automatically
     $model->refresh();
     $newHash = $model->getCurrentHash();
 
@@ -224,14 +225,11 @@ it('updates parent composite hash when related model is deleted', function () {
     $model->refresh();
     $originalComposite = $model->getCurrentHash()->composite_hash;
 
-    // Delete one related model
+    // Delete one related model - this should automatically trigger parent hash update
     $relation1->delete();
 
-    // Manually trigger parent update since event listeners might not be registered in test
-    $model->refresh(); // Refresh first to clear cached relations
-    $model->load('testRelations'); // Force reload relations
-    $model->updateHash();
-
+    // No manual updateHash() call needed - it should happen automatically
+    $model->refresh();
     $newHash = $model->getCurrentHash();
 
     expect($newHash->composite_hash)->not->toBe($originalComposite);
@@ -240,6 +238,42 @@ it('updates parent composite hash when related model is deleted', function () {
     $hashes = [
         $newHash->attribute_hash,
         $relation2->getCurrentHash()->attribute_hash,
+    ];
+    sort($hashes);
+    $expectedComposite = md5(implode('|', $hashes));
+    expect($newHash->composite_hash)->toBe($expectedComposite);
+});
+
+it('automatically updates parent hash when related model is created', function () {
+    $model = TestModel::create([
+        'name' => 'Main Model',
+        'description' => 'Description',
+        'price' => 100,
+        'active' => true,
+    ]);
+
+    // Force initial hash calculation
+    $model->updateHash();
+    $originalComposite = $model->getCurrentHash()->composite_hash;
+
+    // Create a new related model - this should automatically trigger parent hash update
+    $relation = TestRelationModel::create([
+        'test_model_id' => $model->id,
+        'key' => 'color',
+        'value' => 'blue',
+        'order' => 1,
+    ]);
+
+    // No manual updateHash() call needed - it should happen automatically
+    $model->refresh();
+    $newHash = $model->getCurrentHash();
+
+    expect($newHash->composite_hash)->not->toBe($originalComposite);
+
+    // Verify the new composite hash includes the relation
+    $hashes = [
+        $newHash->attribute_hash,
+        $relation->getCurrentHash()->attribute_hash,
     ];
     sort($hashes);
     $expectedComposite = md5(implode('|', $hashes));

@@ -38,6 +38,8 @@ trait InteractsWithHashes
 
         static::deleted(function ($model) {
             $model->deleteHash();
+            // Fire event after deletion so parent models can update their hashes
+            event(new RelatedModelUpdated($model, 'deleted'));
         });
     }
 
@@ -296,12 +298,16 @@ trait InteractsWithHashes
     }
 
     /**
-     * Get parent models that should be notified of changes.
-     * Override this method in your model to specify parent relationships.
+     * Get the parent model relations that should be notified when this model changes.
+     * Override this method in your model to specify which relations point to parent models.
+     * For example, a Comment model might return ['post', 'user'] if changes to comments
+     * should trigger hash updates on both the post and user.
+     * 
+     * @return array<string>
      */
-    public function getParentModels(): Collection
+    public function getParentModelRelations(): array
     {
-        return collect();
+        return [];
     }
 
     /**
