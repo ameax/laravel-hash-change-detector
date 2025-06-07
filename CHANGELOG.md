@@ -4,6 +4,40 @@ All notable changes to `laravel-hash-change-detector` will be documented in this
 
 ## [Unreleased]
 
+## v1.2.0 - 2025-06-07
+
+### Added
+
+- Multiple parent-child relationship tracking via pivot table
+  - New `hash_dependents` table for tracking multiple dependent relationships
+  - Support for models with multiple parents (e.g., Comment belongs to both Post and User)
+  - Automatic parent hash updates when direct database deletions are detected
+  - New `HashDependent` model for managing the pivot relationships
+
+### Changed
+
+- **BREAKING**: Renamed methods for clarity:
+  - `getHashableRelations()` → `getHashCompositeDependencies()`
+  - `getParentModelRelations()` → `getHashRelationsToNotifyOnChange()`
+- **BREAKING**: Database schema changes:
+  - Renamed `hash_parents` table to `hash_dependents`
+  - Removed `main_model_type` and `main_model_id` columns from `hashes` table
+  - Changed foreign key from `child_hash_id` to `hash_id` in dependents table
+- **BREAKING**: Model and API changes:
+  - Renamed `HashParent` model to `HashDependent`
+  - Changed `hasParents()` to `hasDependents()` in Hash model
+  - Updated API responses: `has_parents` → `has_dependents`, `parent_models` → `dependent_models`
+- Improved naming conventions throughout to better reflect dependency relationships
+
+### Fixed
+
+- PHPStan errors resolved with proper type hints and OpenAPI dependency
+- Removed env() calls from config files for better Laravel best practices
+
+### Dependencies
+
+- Added `zircote/swagger-php` as dev dependency for OpenAPI attributes support
+
 ## v1.1.0 - 2025-06-07
 
 ### Added
