@@ -44,10 +44,6 @@ use OpenApi\Attributes as OA;
         new OA\Property(
             property: 'errors',
             type: 'object',
-            additionalProperties: new OA\Schema(
-                type: 'array',
-                items: new OA\Items(type: 'string')
-            ),
             example: ['field_name' => ['The field is required.']]
         ),
     ]

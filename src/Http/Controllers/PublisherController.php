@@ -839,16 +839,11 @@ class PublisherController extends Controller
                                 new OA\Property(
                                     property: 'by_status',
                                     type: 'object',
-                                    additionalProperties: new OA\Schema(type: 'integer'),
                                     example: ['published' => 100, 'failed' => 5, 'pending' => 2]
                                 ),
                                 new OA\Property(
                                     property: 'by_day',
-                                    type: 'object',
-                                    additionalProperties: new OA\Schema(
-                                        type: 'object',
-                                        additionalProperties: new OA\Schema(type: 'integer')
-                                    )
+                                    type: 'object'
                                 ),
                                 new OA\Property(property: 'avg_processing_seconds', type: 'number', nullable: true),
                                 new OA\Property(property: 'success_rate', type: 'number', format: 'float'),

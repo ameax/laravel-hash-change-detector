@@ -73,7 +73,7 @@ return [
     |
     */
     'api' => [
-        'enabled' => env('HASH_DETECTOR_API_ENABLED', true),
+        'enabled' => true,
         'prefix' => 'api/hash-change-detector',
         'middleware' => ['api'],
     ],

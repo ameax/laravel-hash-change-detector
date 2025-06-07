@@ -27,7 +27,7 @@ parameters:
 		-
 			message: '#^Call to an undefined method ameax\\HashChangeDetector\\Contracts\\Hashable\:\:updateHash\(\)\.$#'
 			identifier: method.notFound
-			count: 2
+			count: 1
 			path: src/Listeners/HandleRelatedModelUpdated.php
 
 		-

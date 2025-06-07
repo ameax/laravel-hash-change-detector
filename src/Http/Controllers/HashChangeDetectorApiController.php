@@ -7,6 +7,7 @@ namespace ameax\HashChangeDetector\Http\Controllers;
 use ameax\HashChangeDetector\Jobs\DetectChangesJob;
 use ameax\HashChangeDetector\Jobs\PublishModelJob;
 use ameax\HashChangeDetector\Models\Hash;
+use ameax\HashChangeDetector\Models\HashParent;
 use ameax\HashChangeDetector\Models\Publish;
 use ameax\HashChangeDetector\Models\Publisher;
 use Illuminate\Http\JsonResponse;
@@ -144,11 +145,11 @@ class HashChangeDetectorApiController extends Controller
             'attribute_hash' => $hash->attribute_hash,
             'composite_hash' => $hash->composite_hash,
             'has_parents' => $hash->hasParents(),
-            'parent_models' => $hash->parents->map(function ($parent) {
+            'parent_models' => $hash->parents->map(function (HashParent $parent) {
                 return [
-                    'type' => $parent->parent_model_type,
-                    'id' => $parent->parent_model_id,
-                    'relation' => $parent->relation_name,
+                    'type' => $parent->getAttribute('parent_model_type'),
+                    'id' => $parent->getAttribute('parent_model_id'),
+                    'relation' => $parent->getAttribute('relation_name'),
                 ];
             }),
             'updated_at' => $hash->updated_at->toIso8601String(),
@@ -607,8 +608,7 @@ class HashChangeDetectorApiController extends Controller
                         new OA\Property(property: 'active_publishers', type: 'integer'),
                         new OA\Property(
                             property: 'publishes_by_status',
-                            type: 'object',
-                            additionalProperties: new OA\Schema(type: 'integer')
+                            type: 'object'
                         ),
                         new OA\Property(
                             property: 'model_specific',
