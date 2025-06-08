@@ -54,13 +54,14 @@ class ListPublishersCommand extends Command
         }
 
         $this->table(
-            ['ID', 'Name', 'Model', 'Publisher', 'Status', 'Created At'],
+            ['ID', 'Name', 'Model', 'Publisher', 'Status', 'Deletion', 'Created At'],
             $publishers->map(fn ($p) => [
                 $p->id,
                 $p->name,
                 class_basename($p->model_type),
                 class_basename($p->publisher_class),
                 $p->status,
+                $p->isDeletePublisher() ? '<info>Yes</info>' : 'No',
                 $p->created_at->format('Y-m-d H:i:s'),
             ])
         );

@@ -66,6 +66,28 @@ class Publisher extends Model
         return app($this->publisher_class);
     }
 
+    /**
+     * Check if this publisher implements the DeletePublisher interface.
+     */
+    public function isDeletePublisher(): bool
+    {
+        return is_subclass_of($this->publisher_class, \ameax\HashChangeDetector\Contracts\DeletePublisher::class);
+    }
+
+    /**
+     * Get an instance of the publisher as a DeletePublisher if it implements the interface.
+     *
+     * @throws \Exception
+     */
+    public function getDeletePublisherInstance(): ?\ameax\HashChangeDetector\Contracts\DeletePublisher
+    {
+        if (! $this->isDeletePublisher()) {
+            return null;
+        }
+
+        return app($this->publisher_class);
+    }
+
     protected static function newFactory(): PublisherFactory
     {
         return PublisherFactory::new();

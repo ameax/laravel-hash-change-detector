@@ -366,6 +366,25 @@ protected function schedule(Schedule $schedule)
 3. **Updates changed records** and triggers events
 4. **Detects deletions** by finding orphaned hash records
 
+### Deletion Detection
+
+The package automatically detects when models are deleted:
+
+#### Immediate Detection (Eloquent Deletions)
+When models are deleted through Eloquent (`$model->delete()`), deletion publishers are triggered immediately:
+- The `HashableModelDeleted` event fires before the hash is removed
+- All configured DeletePublishers are notified instantly
+- No need to wait for scheduled detection
+
+#### Scheduled Detection (Direct Database Deletions)
+For deletions made outside Laravel (`DELETE FROM orders WHERE id = 123`):
+- The scheduled `detect-changes` command finds orphaned hash records
+- Updates all dependent models that referenced the deleted model
+- Triggers deletion events for configured DeletePublishers
+- Cleans up orphaned hash and publish records
+
+Both methods ensure your external systems are notified when data is removed.
+
 ### Example Scenario
 
 ```sql
@@ -383,7 +402,7 @@ UPDATE orders SET total_amount = 150.00 WHERE id = 123;
 
 Automatically sync changes to external systems by creating publishers:
 
-### Creating a Publisher
+### Creating Publishers for Create/Update Operations
 
 ```php
 use ameax\HashChangeDetector\Contracts\Publisher;
@@ -407,6 +426,88 @@ class OrderApiPublisher implements Publisher
             'items' => $model->orderItems->toArray(),
             'shipping' => $model->shipping?->toArray(),
         ];
+    }
+}
+```
+
+### Creating Publishers for Delete Operations
+
+For handling model deletions, implement the `DeletePublisher` interface:
+
+```php
+use ameax\HashChangeDetector\Contracts\DeletePublisher;
+
+class OrderApiDeletePublisher implements DeletePublisher
+{
+    public function publishDeletion(string $modelClass, int $modelId, array $lastKnownData): bool
+    {
+        $response = Http::delete("https://api.example.com/orders/{$modelId}");
+        
+        return $response->successful();
+    }
+    
+    public function shouldPublishDeletion(string $modelClass, int $modelId): bool
+    {
+        // Optional: Add logic to skip certain deletions
+        return true;
+    }
+    
+    public function getMaxAttempts(): int
+    {
+        return 3;
+    }
+}
+```
+
+### Combined Publisher (Handles Both Operations)
+
+You can create a publisher that handles both create/update and delete operations:
+
+```php
+use ameax\HashChangeDetector\Contracts\Publisher;
+use ameax\HashChangeDetector\Contracts\DeletePublisher;
+
+class OrderApiFullPublisher implements Publisher, DeletePublisher
+{
+    // Create/Update methods
+    public function publish(Model $model, array $data): bool
+    {
+        $method = $model->wasRecentlyCreated ? 'post' : 'put';
+        $response = Http::$method('https://api.example.com/orders', [
+            'order_id' => $model->id,
+            'data' => $data,
+        ]);
+        
+        return $response->successful();
+    }
+    
+    public function getData(Model $model): array
+    {
+        return $model->toArray();
+    }
+    
+    // Delete methods
+    public function publishDeletion(string $modelClass, int $modelId, array $lastKnownData): bool
+    {
+        $response = Http::delete("https://api.example.com/orders/{$modelId}");
+        
+        return $response->successful();
+    }
+    
+    public function shouldPublishDeletion(string $modelClass, int $modelId): bool
+    {
+        return true;
+    }
+    
+    // Shared methods
+    public function shouldPublish(Model $model): bool
+    {
+        return $model->status !== 'draft';
+    }
+    
+    public function getMaxAttempts(): int
+    {
+        return 3;
     }
 }
 ```

@@ -240,6 +240,8 @@ class DetectChangesJob implements ShouldQueue
                     if (method_exists($dependentModel, 'getHashCompositeDependencies')) {
                         $dependentModel->load($dependentModel->getHashCompositeDependencies());
                     }
+                    // The updateHash method will trigger events that are handled by
+                    // HandleRelatedModelUpdated listener, which has loop prevention
                     $dependentModel->updateHash();
                 }
             }

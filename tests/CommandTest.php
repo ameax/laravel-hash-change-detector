@@ -72,13 +72,14 @@ it('lists publishers', function () {
 
     $this->artisan('hash-detector:publisher:list')
         ->expectsTable(
-            ['ID', 'Name', 'Model', 'Publisher', 'Status', 'Created At'],
+            ['ID', 'Name', 'Model', 'Publisher', 'Status', 'Deletion', 'Created At'],
             Publisher::all()->map(fn ($p) => [
                 $p->id,
                 $p->name,
                 'TestModel',
                 'LogPublisher',
                 $p->status,
+                $p->isDeletePublisher() ? '<info>Yes</info>' : 'No',
                 $p->created_at->format('Y-m-d H:i:s'),
             ])
         )

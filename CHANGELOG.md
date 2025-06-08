@@ -4,6 +4,43 @@ All notable changes to `laravel-hash-change-detector` will be documented in this
 
 ## [Unreleased]
 
+## v1.3.1 - 2025-01-14
+
+### Fixed
+- **CRITICAL BUG FIX**: Fixed parent model hash updates for direct database changes to dependent models
+  - The `RelatedModelUpdated` event now fires on EVERY call to `updateHash()`, not just when the model's own hash changes
+  - This ensures parent models are notified even when dependent models' hashes are already current
+  - Resolves issue where second runs of `DetectChangesJob` would not update parent composite hashes
+  - Direct database changes to dependent models now consistently update parent composite hashes
+  - No longer requires running detection on both dependent and parent model classes
+
+## v1.3.0 - 2025-06-08
+
+### Added
+
+- DeletePublisher interface for handling model deletions
+  - New `DeletePublisher` contract with `publishDeletion()`, `shouldPublishDeletion()`, and `getMaxAttempts()` methods
+  - Immediate deletion notifications when models are deleted via Eloquent
+  - Scheduled detection for models deleted directly in database
+  - Example implementations: `LogDeletePublisher` and `HttpDeletePublisher`
+  - New `DeletePublishJob` for processing deletion publishes
+  - New `HandleHashableModelDeleted` listener for deletion events
+
+### Changed
+
+- Updated `publishes` table schema:
+  - Made `hash_id` nullable to support deletion records
+  - Added `metadata` JSON column for storing deletion information
+- Enhanced Publisher model with deletion support:
+  - Added `isDeletePublisher()` method to check if publisher implements DeletePublisher
+  - Added `getDeletePublisherInstance()` method to get DeletePublisher instance
+- Updated `ListPublishersCommand` to show deletion capability in output
+
+### Migration
+
+- New migration required: `add_metadata_to_publishes_table`
+- Run `php artisan migrate` after updating
+
 ## v1.2.1 - 2025-06-07
 
 ### Fixed

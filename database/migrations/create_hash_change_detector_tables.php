@@ -45,9 +45,10 @@ return new class extends Migration
         // Create publishes table
         Schema::create($publishesTable, function (Blueprint $table) use ($hashesTable, $publishersTable) {
             $table->id();
-            $table->foreignId('hash_id')->constrained($hashesTable)->cascadeOnDelete();
+            $table->foreignId('hash_id')->nullable()->constrained($hashesTable)->cascadeOnDelete();
             $table->foreignId('publisher_id')->constrained($publishersTable)->cascadeOnDelete();
             $table->string('published_hash', 32);
+            $table->json('metadata')->nullable();
             $table->timestamp('published_at')->nullable();
             $table->enum('status', ['pending', 'dispatched', 'deferred', 'published', 'failed'])->default('pending');
             $table->unsignedInteger('attempts')->default(0);

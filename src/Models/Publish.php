@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
  * @property int $id
- * @property int $hash_id
+ * @property int|null $hash_id
  * @property int $publisher_id
  * @property string $published_hash
  * @property \Illuminate\Support\Carbon|null $published_at
@@ -17,9 +17,10 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property int $attempts
  * @property string|null $last_error
  * @property \Illuminate\Support\Carbon|null $next_try
+ * @property array|null $metadata
  * @property \Illuminate\Support\Carbon $created_at
  * @property \Illuminate\Support\Carbon $updated_at
- * @property-read \ameax\HashChangeDetector\Models\Hash $hash
+ * @property-read \ameax\HashChangeDetector\Models\Hash|null $hash
  * @property-read \ameax\HashChangeDetector\Models\Publisher $publisher
  */
 class Publish extends Model
@@ -33,6 +34,7 @@ class Publish extends Model
         'attempts',
         'last_error',
         'next_try',
+        'metadata',
     ];
 
     protected $casts = [
@@ -40,6 +42,7 @@ class Publish extends Model
         'next_try' => 'datetime',
         'attempts' => 'integer',
         'status' => 'string',
+        'metadata' => 'array',
     ];
 
     public function __construct(array $attributes = [])
