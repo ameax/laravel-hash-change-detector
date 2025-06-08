@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace ameax\HashChangeDetector\Traits;
 
-use ameax\HashChangeDetector\Events\HashChanged;
 use ameax\HashChangeDetector\Events\HashableModelDeleted;
+use ameax\HashChangeDetector\Events\HashChanged;
 use ameax\HashChangeDetector\Events\HashUpdatedWithoutPublishing;
 use ameax\HashChangeDetector\Events\RelatedModelUpdated;
 use ameax\HashChangeDetector\Models\Hash;
@@ -42,12 +42,12 @@ trait InteractsWithHashes
         static::deleted(function ($model) {
             // Get the hash before deletion
             $hash = $model->getCurrentHash();
-            
+
             if ($hash) {
                 // Fire deletion event for publishers
                 event(new HashableModelDeleted($hash, get_class($model), $model->getKey()));
             }
-            
+
             $model->deleteHash();
             // Fire event after deletion so parent models can update their hashes
             event(new RelatedModelUpdated($model, 'deleted'));
@@ -150,7 +150,7 @@ trait InteractsWithHashes
             // because the dependents themselves may have changed
             $this->updateDependentReferences($currentHash);
         }
-        
+
         // Fire event to notify parent models (for direct DB change detection)
         // This should ALWAYS fire regardless of whether this model's hash changed
         event(new RelatedModelUpdated($this, 'updated'));

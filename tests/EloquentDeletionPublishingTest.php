@@ -2,7 +2,6 @@
 
 declare(strict_types=1);
 
-use ameax\HashChangeDetector\Events\HashableModelDeleted;
 use ameax\HashChangeDetector\Jobs\DeletePublishJob;
 use ameax\HashChangeDetector\Models\Publish;
 use ameax\HashChangeDetector\Models\Publisher;
@@ -29,11 +28,11 @@ it('triggers deletion publishers immediately when model is deleted via eloquent'
         'name' => 'Test Model',
         'active' => true,
     ]);
-    
+
     $modelId = $model->id;
     $hash = $model->getCurrentHash();
     expect($hash)->not->toBeNull();
-    
+
     // Delete the model via Eloquent
     $model->delete();
 
@@ -67,7 +66,7 @@ it('does not trigger deletion publishers for regular publishers on delete', func
         'name' => 'Test Model',
         'active' => false,
     ]);
-    
+
     // Delete the model
     $model->delete();
 
@@ -95,9 +94,9 @@ it('triggers deletion publishers even when model has no dependents', function ()
         'name' => 'Standalone Model',
         'active' => true,
     ]);
-    
+
     $modelId = $model->id;
-    
+
     // Delete the model
     $model->delete();
 
@@ -123,11 +122,11 @@ it('provides last known hash data to deletion publishers', function () {
         'name' => 'Model with Data',
         'active' => true,
     ]);
-    
+
     $hash = $model->getCurrentHash();
     $attributeHash = $hash->attribute_hash;
     $compositeHash = $hash->composite_hash;
-    
+
     $model->delete();
 
     $publish = Publish::where('publisher_id', $publisher->id)

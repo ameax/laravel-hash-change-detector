@@ -65,7 +65,7 @@ class HttpDeletePublisher implements DeletePublisher
         // Convert model class to endpoint
         // e.g., App\Models\User -> users
         $basename = class_basename($modelClass);
-        
+
         return strtolower($basename).'s';
     }
 }

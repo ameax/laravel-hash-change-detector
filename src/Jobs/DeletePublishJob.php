@@ -51,7 +51,7 @@ class DeletePublishJob implements ShouldQueue
 
             // Get deletion data from metadata
             $metadata = $this->publish->metadata;
-            
+
             if (! isset($metadata['type']) || $metadata['type'] !== 'deletion') {
                 throw new Exception('Invalid metadata for deletion publish');
             }
@@ -108,7 +108,7 @@ class DeletePublishJob implements ShouldQueue
 
             // Schedule retry if it's the first attempt (30 seconds)
             if ($this->publish->attempts === 1 && $this->publish->next_try) {
-                $delay = (int)$this->publish->next_try->diffInSeconds(now());
+                $delay = (int) $this->publish->next_try->diffInSeconds(now());
                 DeletePublishJob::dispatch($this->publish)->delay($delay);
             }
             // Other retries will be handled by the scheduler

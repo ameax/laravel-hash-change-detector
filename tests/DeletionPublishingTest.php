@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 use ameax\HashChangeDetector\Events\HashableModelDeleted;
 use ameax\HashChangeDetector\Jobs\DeletePublishJob;
-use ameax\HashChangeDetector\Listeners\HandleHashableModelDeleted;
 use ameax\HashChangeDetector\Models\Hash;
 use ameax\HashChangeDetector\Models\Publish;
 use ameax\HashChangeDetector\Models\Publisher;

@@ -12,21 +12,19 @@ class HandleRelatedModelUpdated
 {
     /**
      * Stack to track models currently being processed to prevent infinite loops.
-     * 
+     *
      * @var array<string, bool>
      */
     protected static array $processingStack = [];
-    
+
     /**
      * Current depth of the update chain.
-     * 
-     * @var int
      */
     protected static int $currentDepth = 0;
-    
+
     /**
      * Maximum allowed depth for update chains.
-     * 
+     *
      * @var int
      */
     protected const MAX_DEPTH = 10;
@@ -38,29 +36,29 @@ class HandleRelatedModelUpdated
     {
         $updatedModel = $event->model;
         $action = $event->action;
-        
+
         // Ensure the model implements Hashable interface
-        if (!($updatedModel instanceof Hashable)) {
+        if (! ($updatedModel instanceof Hashable)) {
             return;
         }
-        
+
         // Create a unique key for this model
-        $modelKey = get_class($updatedModel) . ':' . $updatedModel->getKey();
-        
+        $modelKey = get_class($updatedModel).':'.$updatedModel->getKey();
+
         // Skip if this model is already being processed (prevents infinite loops)
         if (isset(self::$processingStack[$modelKey]) && self::$processingStack[$modelKey]) {
             return;
         }
-        
+
         // Check depth limit to prevent runaway recursion
         if (self::$currentDepth >= self::MAX_DEPTH) {
             return;
         }
-        
+
         // Mark this model as being processed
         self::$processingStack[$modelKey] = true;
         self::$currentDepth++;
-        
+
         try {
             $this->processModelUpdate($updatedModel, $action);
         } finally {
@@ -69,12 +67,11 @@ class HandleRelatedModelUpdated
             self::$currentDepth--;
         }
     }
-    
+
     /**
      * Process the model update.
-     * 
-     * @param \Illuminate\Database\Eloquent\Model&\ameax\HashChangeDetector\Contracts\Hashable $updatedModel
-     * @param string $action
+     *
+     * @param  \Illuminate\Database\Eloquent\Model&\ameax\HashChangeDetector\Contracts\Hashable  $updatedModel
      */
     protected function processModelUpdate($updatedModel, string $action): void
     {
@@ -176,7 +173,7 @@ class HandleRelatedModelUpdated
             }
         }
     }
-    
+
     /**
      * Clear the processing stack (useful for testing).
      */
